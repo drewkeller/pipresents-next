@@ -551,7 +551,7 @@ class Test:
             self.vp.terminate('killed')
             return
         # kill the omxplayer if it is still running because window has been closed during a track playing.
-            exit()
+        exit()
 
     def _end(self):
         exit()
