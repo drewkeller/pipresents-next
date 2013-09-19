@@ -19,15 +19,15 @@ from pp_utils import Monitor
  External commands
  ----------------------------
  __init__ just creates the instance and initialises variables (e.g. mplayer=mplayerDriver())
- play -  plays a track
- pause  - toggles pause
- control  - sends controls to mplayer while a track is playing (use stop and pause instead of q and p)
- stop - stops a video that is playing.
+ play      - plays a track
+ pause     - toggles pause
+ control   - sends controls to mplayer while a track is playing (use stop and pause instead of q and p)
+ stop      - stops a video that is playing.
  terminate - Stops a video playing. Used when aborting an application.
- 
+
  Advanced:
  prepare  - processes the track up to where it is ready to display, at this time it pauses.
- show  - plays the video from where 'prepare' left off by resuming from the pause.
+ show     - plays the video from where 'prepare' left off by resuming from the pause.
 
 
 Signals
@@ -41,31 +41,30 @@ Signals
 
 class mplayerDriver(object):
 
-    _STATUS_REXP = re.compile(r"V :\s*([\d.]+).*") 
+    _STATUS_REXP = re.compile(r"V :\s*([\d.]+).*")
     _DONE_REXP = re.compile(r"Exiting*")
 
-    _LAUNCH_CMD = 'mplayer  -quiet '
+    _LAUNCH_CMD = 'mplayer -quiet '
 
-    def __init__(self,widget):
+    def __init__(self, widget):
 
-        self.widget=widget
-        
-        self.mon=Monitor()
+        self.widget = widget
+        self.mon    = Monitor()
         self.mon.off()
-        self._process=None
-        self.paused=None
+        self._process = None
+        self.paused   = None
 
-    def control(self,char):
-        if self._process<>None:
+    def control(self, char):
+        if self._process:
             self._process.send(char)
 
     def pause(self):
-        if self._process<>None:
-            self._process.send('p')       
+        if self._process:
+            self._process.send('p')
             if not self.paused:
                 self.paused = True
             else:
-                self.paused=False
+                self.paused = False
 
     def play(self, track, options):
         self._pp(track, options,False)
@@ -75,29 +74,28 @@ class mplayerDriver(object):
     
     def show(self):
         # unpause to start playing
-        if self._process<>None:
+        if self._process:
             self._process.send('p')
             self.paused = False
 
     def stop(self):
-        if self._process<>None:
+        if self._process:
             self._process.send('q')
 
     # kill the subprocess (mplayer). Used for tidy up on exit.
-    def terminate(self,reason):
-        self.terminate_reason=reason
-        if self._process<>None:
+    def terminate(self, reason):
+        self.terminate_reason = reason
+        if self._process:
            self._process.send('q')
         else:
-            self.end_play_signal=True
-            
-        
+            self.end_play_signal = True
+
     def terminate_reason(self):
         return self.terminate_reason
-    
+
    # test of whether _process is running
     def is_running(self):
-        return self._process.isalive()     
+        return self._process.isalive()
 
 # ***********************************
 # INTERNAL FUNCTIONS
@@ -112,43 +110,42 @@ class mplayerDriver(object):
         cmd = mplayerDriver._LAUNCH_CMD + options +" " + track
         self.mon.log(self, "Send command to mplayer: "+ cmd)
         self._process = pexpect.spawn(cmd)
-        
+
         # uncomment to monitor output to and input from mplayer (read pexpect manual)
         # fout= file('/home/pi/pipresents/mplayerlogfile.txt','w')  #uncomment and change sys.stdout to fout to log to a file
-        #self._process.logfile_send = sys.stdout  # send just commands to stdout
+        # self._process.logfile_send = sys.stdout  # send just commands to stdout
         # self._process.logfile=fout  # send all communications to log file
 
         if pause_before_play:
             self._process.send('p')
             self.paused = True
-            
+
         #start the thread that is going to monitor sys.stdout. Presumably needs a thread because of blocking
 
-        self._position_thread = Thread(target=self._get_position)
+        self._position_thread = Thread(target = self._get_position)
         self._position_thread.start()
-            
+
     def _get_position(self):
         #print 'hang'
         #while True:
                 #pass
-        self.start_play_signal = True  
-
+        self.start_play_signal = True
         self.audio_position=0.0
-        
+
         while True:
             index = self._process.expect([mplayerDriver._STATUS_REXP,
                                             pexpect.TIMEOUT,
                                             pexpect.EOF,
                                             mplayerDriver._DONE_REXP])
-            if index == 1: continue            # timeout - it doesn't block so is a thread needed?
+            if index == 1:
+                continue            # timeout - it doesn't block so is a thread needed?
             elif index in (2, 3):
                 #Exiting
-                self.end_play_signal=True
+                self.end_play_signal = True
                 break
             else:
                 # presumably matches _STATUS_REXP so get video position
-                # has a bug, position is not displayed for an audio track (mp3). Need to look at another field in the status, but how to extract it 
+                # has a bug, position is not displayed for an audio track (mp3). Need to look at another field in the status, but how to extract it
                 self.audio_position = 0.0
             sleep(0.05)
-
 
