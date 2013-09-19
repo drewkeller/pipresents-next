@@ -4,9 +4,125 @@ import copy
 from Tkinter import *
 import Tkinter as tk
 import os
+import re
+import subprocess
 import ConfigParser
 from pp_utils import Monitor
 from pp_options import command_options
+
+class PP_GPIO:
+
+    INPUT    = 0
+    OUTPUT   = 1
+    MODULE   = False
+    GPIO     = False
+    HARDWARE = False
+    PINLIST  = False
+    CFG      = False
+
+    PINLIST_RPIV1 = ('P1-03', 'P1-05', 'P1-07', 'P1-08', 'P1-10',
+                     'P1-11', 'P1-12', 'P1-13', 'P1-15', 'P1-16',
+                     'P1-18', 'P1-19', 'P1-21', 'P1-22', 'P1-23',
+                     'P1-24', 'P1-26')
+
+    PINLIST_CB    = ('CB-01', 'CB-03', 'CB-04', 'CB-05', 'CB-06',
+                     'CB-07', 'CB-08', 'CB-10', 'CB-11', 'CB-12',
+                     'CB-13', 'CB-14', 'CB-15', 'CB-16', 'CB-17',
+                     'CB-18', 'CB-19', 'CB-21', 'CB-22', 'CB-23',
+                     'CB-24', 'CB-25', 'CB-26', 'CB-27', 'CB-28',
+                     'CB-29', 'CB-30', 'CB-31', 'CB-32', 'CB-37',
+                     'CB-39', 'CB-40', 'CB-45', 'CB-46', 'CB-47',
+                     'CB-48', 'CB-50', 'CB-52', 'CB-53', 'CB-54',
+                     'CB-55', 'CB-56', 'CB-57', 'CB-58', 'CB-59',
+                     'CB-60', 'CB-61', 'CB-62', 'CB-63', 'CB-64',
+                     'CB-65', 'CB-66', 'CB-70', 'CB-72', 'CB-74',
+                     'CB-76', 'CB-78', 'CB-80', 'CB-82', 'CB-84',
+                     'CB-86', 'CB-88', 'CB-90', 'CB-92', 'CB-94',
+                     'CB-96')
+
+    def __init__(self):
+        if self.module_exists("RPi"):
+            self.MODULE = "RPi"
+            import RPi.GPIO as GPIO
+        elif self.module_exists("wiringpi2"):
+            self.MODULE = "WPi"
+            import wiringpi2 as GPIO
+        else:
+            self.mon.log(self, "No i/o library found (RPi/wiringpi2)")
+            return False
+
+        self.GPIO = GPIO
+        self.setup()
+
+    def setup(self):
+        if self.module == "RPi":
+            self.GPIO.setwarnings(False)
+            self.GPIO.setmode(self.GPIO.BOARD)
+        elif self.module == "WPi":
+            self.GPIO.wiringPiSetupSys()
+            #self.GPIO.wiringPiSetup()
+            self.GPIO.wiringPiSetupGpio()
+
+        command = "cat /proc/cpuinfo"
+        all_info = subprocess.check_output(command, shell=True).strip()
+        for line in all_info.split("\n"):
+            if "Hardware" in line:
+                self.HARDWARE = re.sub( ".*Hardware.*:", "", line,1).strip()
+
+        if self.HARDWARE == "BCM2708":
+            # Raspberry PI
+            self.PINLIST = self.PINLIST_RPIV1
+            self.CFG     = "gpio_rpiv1.cfg"
+        elif self.HARDWARE == "sun4i" or self.HARDWARE == "sun7i":
+            # Cubieboard A10/A20
+            self.PINLIST = self.PINLIST_CB
+            self.CFG     = "gpio_cb.cfg"
+        else:
+            self.mon.log(self, "unknown Hardware")
+
+    def cleanup(self):
+        if self.module == "RPi":
+            self.GPIO.cleanup()
+        elif self.module == "WPi":
+            # set all pins to input
+            for pin in self.PINLIST:
+                num = int(pin.split('-')[1:])
+                self.pinMode(num,self.INPUT)
+
+    def digitalWrite(self, num, val):
+        if self.module == "RPi":
+            self.GPIO.output(num, val)
+        elif self.module == "WPi":
+            self.GPIO.digitalWrite(num, val)
+
+    def digitalRead(self, num):
+        if self.module == "RPi":
+            self.GPIO.input(num)
+        elif self.module == "WPi":
+            self.GPIO.digitalRead(num)
+
+    def pinMode(self, num, mode, up_down):
+        if mode == self.INPUT:
+            if self.module == "RPi":
+                self.GPIO.setup(num, mode, up_down)
+            elif self.module == "WPi":
+                self.GPIO.pinMode(num, mode)
+
+        elif mode == self.OUTPUT:
+            if self.module == "RPi":
+                self.GPIO.setup(num, mode)
+                self.digitalWrite(num, 0)
+            elif self.module == "WPi":
+                self.GPIO.pinMode(num, mode)
+                self.digitalWrite(num, 0)
+
+    def module_exists(module_name):
+        try:
+            __import__(module_name)
+        except ImportError:
+            return False
+        else:
+            return True
 
 class PPIO:
     """
@@ -43,10 +159,6 @@ class PPIO:
                 0,               # threshold
                 '',              # pull
                 0,False,False,0] # dynamics
-
-    PINLIST = ('P1-03','P1-05','P1-07','P1-08',
-             'P1-10','P1-11','P1-12','P1-13','P1-15','P1-16','P1-18','P1-19',
-             'P1-21','P1-22','P1-23','P1-24','P1-26')
 
     # index of shutdown pin
     SHUTDOWN_INDEX = 0
@@ -90,11 +202,11 @@ class PPIO:
         if not self.read(self.pp_dir, self.pp_home, self.pp_profile):
             return False
 
-        import RPi.GPIO as GPIO
-        self.GPIO = GPIO
+        # setup GPIO
+        self.GPIO = PP_GPIO()
 
         #construct the GPIO control list from the configuration
-        for index, pin_def in enumerate(PPIO.PINLIST):
+        for index, pin_def in enumerate(self.GPIO.PINLIST):
             pin           = copy.deepcopy(PPIO.TEMPLATE)
             pin_bits      = pin_def.split('-')
             pin_num       = pin_bits[1:]
@@ -136,18 +248,14 @@ class PPIO:
             # print pin
             PPIO.pins.append(copy.deepcopy(pin))
 
-        # setup GPIO
-        self.GPIO.setwarnings(False)
-        self.GPIO.setmode(self.GPIO.BOARD)
-
         # set up the GPIO inputs and outputs
         for index, pin in enumerate(PPIO.pins):
             num = pin[PPIO.PIN]
             if pin[PPIO.DIRECTION] == 'in':
-                self.GPIO.setup(num, self.GPIO.IN, pull_up_down = pin[PPIO.PULL])
+                self.GPIO.pinMode(num, self.GPIO.INPUT, pull_up_down = pin[PPIO.PULL])
             elif pin[PPIO.DIRECTION] == 'out':
-                self.GPIO.setup(num, self.GPIO.OUT)
-                self.GPIO.setup(num, False)
+                self.GPIO.pinMode(num, self.GPIO.OUTPUT)
+                self.GPIO.digitalWrite(num, 0)
         self.reset_inputs()
         PPIO.gpio_enabled = True
 
@@ -205,7 +313,7 @@ class PPIO:
         for index, pin in enumerate(PPIO.pins):
             if pin[PPIO.DIRECTION] == 'in':
                 # debounce
-                if not self.GPIO.input(pin[PPIO.PIN]):
+                if not self.GPIO.digitalRead(pin[PPIO.PIN]):
                     if pin[PPIO.COUNT] < pin[PPIO.THRESHOLD]:
                         pin[PPIO.COUNT] += 1
                         if pin[PPIO.COUNT] == pin[PPIO.THRESHOLD]:
@@ -265,7 +373,7 @@ class PPIO:
     def do_event(self, pin, to_state, req_time):
         self.mon.log (self, 'pin P1-' + str(pin) + ' set  ' + str(to_state) + ' required: ' + str(req_time) + ' actual: ' + str(long(time.time())))
         # print 'pin P1-' + str(pin) + ' set  ' + str(to_state) + ' required: ' + str(req_time) + ' actual: ' + str(long(time.time()))
-        self.GPIO.output(pin, to_state)
+        self.GPIO.digitalWrite(pin, to_state)
 
 # ************************************************
 # gpio output sequencer interface methods
@@ -297,7 +405,7 @@ class PPIO:
             for index, pin in enumerate(PPIO.pins):
                 num = pin[PPIO.PIN]
                 if pin[PPIO.DIRECTION] == 'out':
-                    self.GPIO.output(num, False)
+                    self.GPIO.digitalWrite(num, 0)
 
 # ************************************************
 # internal functions
@@ -398,29 +506,29 @@ class PPIO:
 
     def read(self, pp_dir, pp_home, pp_profile):
             # try inside profile
-            tryfile = pp_profile + os.sep + "gpio.cfg"
-            # self.mon.log(self,"Trying gpio.cfg in profile at: "+ tryfile)
+            tryfile = pp_profile + os.sep + self.GPIO.CFG
+            # self.mon.log(self,"Trying " + self.GPIO.CFG + " in profile at: "+ tryfile)
             if os.path.exists(tryfile):
                  filename = tryfile
             else:
                 # try inside pp_home
-                # self.mon.log(self,"gpio.cfg not found at "+ tryfile+ " trying pp_home")
-                tryfile=pp_home + os.sep + "gpio.cfg"
+                # self.mon.log(self, self.GPIO.CFG + " not found at "+ tryfile+ " trying pp_home")
+                tryfile = pp_home + os.sep + self.GPIO.CFG
                 if os.path.exists(tryfile):
                     filename = tryfile
                 else:
                     # try inside pipresents
-                    # self.mon.log(self,"gpio.cfg not found at "+ tryfile + " trying inside pipresents")
-                    tryfile = pp_dir + os.sep + 'pp_home' + os.sep + "gpio.cfg"
+                    # self.mon.log(self, self.GPIO.CFG + " not found at "+ tryfile + " trying inside pipresents")
+                    tryfile = pp_dir + os.sep + 'pp_home' + os.sep + self.GPIO.CFG
                     if os.path.exists(tryfile):
                         filename = tryfile
                     else:
-                        self.mon.log(self, "gpio.cfg not found at " + tryfile)
-                        self.mon.err(self, "gpio.cfg not found")
+                        self.mon.log(self, self.GPIO.CFG + " not found at " + tryfile)
+                        self.mon.err(self, self.GPIO.CFG + " not found")
                         return False
             self.config = ConfigParser.ConfigParser()
             self.config.read(filename)
-            self.mon.log(self, "gpio.cfg read from " + filename)
+            self.mon.log(self, self.GPIO.CFG + " read from " + filename)
             return True
 
 
