@@ -50,17 +50,20 @@ class OMXDriver(object):
         self.widget = widget
         self.mon    = Monitor()
         self.mon.off()
+        self._process = None
         self.paused   = None
 
-    def control(self,char):
-        self._process.send(char)
+    def control(self, char):
+        if self._process:
+            self._process.send(char)
 
     def pause(self):
-        self._process.send('p')       
-        if not self.paused:
-            self.paused = True
-        else:
-            self.paused = False
+        if self._process:
+            self._process.send('p')
+            if not self.paused:
+                self.paused = True
+            else:
+                self.paused = False
 
     def play(self, track, options):
         self._pp(track, options, False)
@@ -70,17 +73,22 @@ class OMXDriver(object):
 
     def show(self):
         # unpause to start playing
-        self._process.send('p')
-        self.paused = False
+        if self._process:
+            self._process.send('p')
+            self.paused = False
 
     def stop(self):
-        self._process.send('q')
+        if self._process:
+            self._process.send('q')
 
     # kill the subprocess (omxplayer.bin). Used for tidy up on exit.
     def terminate(self, reason):
         self.terminate_reason = reason
-        self._process.send('q')
-        
+        if self._process:
+            self._process.send('q')
+        else:
+            self.end_play_signal = True
+
     def terminate_reason(self):
         return self.terminate_reason
 
