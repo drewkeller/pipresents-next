@@ -167,6 +167,7 @@ class playerDriver(object):
         #while True:
                 #pass
         self.start_play_signal = True
+        self.video_position    = 0.0
         self.audio_position=0.0
 
         while True:
@@ -183,6 +184,7 @@ class playerDriver(object):
             else:
                 # presumably matches _STATUS_REXP so get video position
                 # has a bug, position is not displayed for an audio track (mp3). Need to look at another field in the status, but how to extract it
+                #self.video_position = float(self._process.match.group(1))
                 self.audio_position = 0.0
             sleep(0.05)
 
