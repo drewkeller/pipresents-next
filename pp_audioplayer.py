@@ -115,12 +115,13 @@ class AudioPlayer:
         self.enable_menu    = enable_menu
 
         # select the sound device
+        '''
         if self.mplayer_audio != "":
             if self.mplayer_audio == 'hdmi':
                 os.system("amixer -q -c 0 cset numid=3 2")
             else:
                 os.system("amixer -q -c 0 cset numid=3 1")
-
+        '''
         # callback to the calling object to e.g remove egg timer.
         if self.ready_callback != None:
             self.ready_callback()
