@@ -134,7 +134,7 @@ class PPIO:
 
 # constants for buttons
 # cofiguration from gpio.cfg
-    PIN          = 0 # pin on RPi board GPIO connector e.g. P1-11
+    PIN          = 0 # pin on RPi board GPIO connector e.g. P1-11, on Cubieboard e.g CB-11
     DIRECTION    = 1 # IN/OUT/NONE (None is not used)
     NAME         = 2 # name for output
     RISING_NAME  = 3 # name for rising edge callback
@@ -165,7 +165,7 @@ class PPIO:
 
 # constants for sequencer
 
-    SEQUENCER_PIN      = 0 # GPIO pin number, the xx in P1-xx
+    SEQUENCER_PIN      = 0 # GPIO pin number, the xx in P1-xx or CB-xx
     SEQUENCER_TO_STATE = 1 # False = off, True = on
     SEQUENCER_TIME     = 2 # time since the epoch in seconds
     SEQUENCER_TAG      = 3 # tag used to delete all matching event, usually a track reference.
