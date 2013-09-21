@@ -10,7 +10,7 @@ from pp_utils import Monitor
  pyomxplayer from https://github.com/jbaiter/pyomxplayer
  extensively modified by KenT
 
- omxdriver hides the detail of using the omxplayer command  from videoplayer
+ playerDriver hides the detail of using the omxplayer command  from videoplayer
  This is meant to be used with videoplayer.py
  Its easy to end up with many copies of omxplayer.bin running if this class is not used with care. use pp_videoplayer.py for a safer interface.
  I found overlapping prepare and show did nor completely reduce the gap between tracks. Sometimes, in a test of this, one of my videos ran very fast when it was the second video
@@ -38,24 +38,45 @@ Signals
 
 """
 
-class OMXDriver(object):
+class playerDriver(object):
 
     _STATUS_REXP = re.compile(r"V :\s*([\d.]+).*")
     _DONE_REXP = re.compile(r"have a nice day.*")
 
     _LAUNCH_CMD = '/usr/bin/omxplayer -s '  #needs changing if user has installed his own version of omxplayer elsewhere
 
-    def __init__(self,widget):
+    def __init__(self, widget):
 
         self.widget = widget
         self.mon    = Monitor()
         self.mon.off()
         self._process = None
         self.paused   = None
+        self.options  = []
 
     def control(self, char):
         if self._process:
             self._process.send(char)
+
+    def set_audio(self, val):
+        if val != "":
+            self.options.append("-o " + value)
+
+    def set_volume(self, val):
+        if val != "":
+            self.options.append("--vol " + str(int(val) * 100))
+
+    def set_speaker(self, val):
+        if val != "":
+            self.mon.log(self, "playerDriver: set_speaker not implemented")
+
+    def set_window(self, val):
+        if val != "":
+            self.options.append("--win " + str(val))
+
+    def add_options(self, val):
+        if val != "":
+            self.options.append(str(val))
 
     def pause(self):
         if self._process:
@@ -100,13 +121,17 @@ class OMXDriver(object):
 # INTERNAL FUNCTIONS
 # ************************************
 
-    def _pp(self, track, options,  pause_before_play):
+    def _pp(self, track, pause_before_play):
         self.paused            = False
         self.start_play_signal = False
         self.end_play_signal   = False
         self.terminate_reason  = ''
         track = "'" + track.replace("'", "'\\''") + "'"
-        cmd   = OMXDriver._LAUNCH_CMD + options + " " + track
+        cmd   = playerDriver._LAUNCH_CMD + ' '
+        if len(self.options):
+            cmd += ' '.join(self.options) + ' '
+        cmd += track
+
         self.mon.log(self, "Send command to omxplayer: " + cmd)
         self._process = pexpect.spawn(cmd)
 
@@ -129,10 +154,10 @@ class OMXDriver(object):
         self.audio_position    = 0.0
 
         while True:
-            index = self._process.expect([OMXDriver._STATUS_REXP,
+            index = self._process.expect([playerDriver._STATUS_REXP,
                                             pexpect.TIMEOUT,
                                             pexpect.EOF,
-                                            OMXDriver._DONE_REXP])
+                                            playerDriver._DONE_REXP])
             if index == 1:
                 continue
             elif index in (2, 3):

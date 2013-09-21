@@ -8,7 +8,7 @@ import PIL.ImageTk
 import PIL.ImageEnhance
 
 from pp_showmanager import ShowManager
-from pp_omxdriver import OMXDriver
+from pp_omxdriver as playerDriver
 from pp_gpio import PPIO
 from pp_utils import Monitor
 
@@ -45,25 +45,36 @@ class VideoPlayer:
         self.track_params = track_params
         self.pp_home      = pp_home
         self.pp_profile   = pp_profile
+        self.videoplayer  = playerDriver(self.canvas)
 
         # get config from medialist if there.
         if self.track_params['omx-audio'] != "":
-            self.omx_audio = self.track_params['omx-audio']
+            self.videoplayer.set_audio(self.track_params['omx-audio'])
         else:
-            self.omx_audio = self.show_params['omx-audio']
-        if self.omx_audio != "": self.omx_audio= "-o " + self.omx_audio
-        
+            self.videoplayer.set_audio(self.show_params['omx-audio'])
+
         if self.track_params['omx-volume'] != "":
-            self.omx_volume = self.track_params['omx-volume']
+            self.videoplayer.set_audio(self.track_params['omx-volume'])
         else:
-            self.omx_volume = self.show_params['omx-volume']
-        if self.omx_volume != "":
-            self.omx_volume = "--vol " + str(int(self.omx_volume) * 100) + ' '
+            self.videoplayer.set_audio(self.show_params['omx-volume'])
 
         if self.track_params['omx-window'] != '':
-            self.omx_window = self.track_params['omx-window']
+            omx_window = self.track_params['omx-window']
         else:
-            self.omx_window = self.show_params['omx-window']
+            omx_window = self.show_params['omx-window']
+
+        error, result = self.parse_window(omx_window)
+        if error == 'error':
+            self.mon.err(self, 'omx window error: ' + omx_window)
+            self.end('error', 'omx window error')
+        else:
+            if result != "centred":
+                self.videoplayer.set_window(omx_window)
+
+        if self.track_params['omx-other-options'] != '':
+            self.videoplayer.add_options(self.track_params['omx-other-options'])
+        else:
+            self.videoplayer.add_options(self.show_params['omx-other-options'])
 
         # get background image from profile.
         if self.track_params['background-image'] != "":
@@ -88,7 +99,6 @@ class VideoPlayer:
         self.ppio = PPIO()
 
         # could put instance generation in play, not sure which is better.
-        self.omx = OMXDriver(self.canvas)
         self.tick_timer = None
         self.init_play_state_machine()
 
@@ -111,46 +121,36 @@ class VideoPlayer:
         # create an  instance of showmanager so we can control concurrent shows
         self.show_manager = ShowManager(self.show_id, self.showlist, self.show_params, self.canvas, self.pp_profile, self.pp_home)
 
-        error, result = self.parse_window(self.omx_window)
-        if error == 'error':
-            self.mon.err(self, 'omx window error: ' + self.omx_window)
-            self.end('error', 'omx window error')
+        # Control other shows at beginning
+        reason, message = self.show_manager.show_control(self.track_params['show-control-begin'])
+        if reason in ('error', 'killed'):
+            self.end_callback(reason,message)
+            self = None
         else:
-            if result != "centred":
-                self.omx_window = '--win "' + result + '" '
-            else:
-                self.omx_window = ''
+            # display the background
+            self.display_content()
 
-             # Control other shows at beginning
-            reason, message = self.show_manager.show_control(self.track_params['show-control-begin'])
-            if reason in ('error', 'killed'):
-                self.end_callback(reason,message)
+            # create animation events
+            reason, message = self.ppio.animate(self.animate_begin_text, id(self))
+            if reason == 'error':
+                self.mon.err(self, message)
+                self.end_callback(reason, message)
                 self = None
             else:
-                # display the background
-                self.display_content()
-
-                # create animation events
-                reason, message = self.ppio.animate(self.animate_begin_text, id(self))
-                if reason == 'error':
-                    self.mon.err(self, message)
-                    self.end_callback(reason, message)
-                    self = None
+                # start playing the video.
+                if self.play_state == VideoPlayer._CLOSED:
+                    self.mon.log(self, ">play track received")
+                    self.start_play_state_machine(track)
                 else:
-                    # start playing the video.
-                    if self.play_state == VideoPlayer._CLOSED:
-                        self.mon.log(self, ">play track received")
-                        self.start_play_state_machine(track)
-                    else:
-                        self.mon.err(self, 'play track rejected')
-                        self.end_callback('error', 'play track rejected')
-                        self = None
+                    self.mon.err(self, 'play track rejected')
+                    self.end_callback('error', 'play track rejected')
+                    self = None
 
     def terminate(self, reason):
         # circumvents state machine and does not wait for omxplayer to close
-        if self.omx != None:
+        if self.videoplayer != None:
             self.mon.log(self, "sent terminate to omxdriver")
-            self.omx.terminate(reason)
+            self.videoplayer.terminate(reason)
             self.end('killed', ' end without waiting for omxplayer to finish') # end without waiting
         else:
             self.mon.log(self, "terminate, omxdriver not running")
@@ -183,7 +183,7 @@ class VideoPlayer:
     #toggle pause
     def pause(self):
         if self.play_state in (VideoPlayer._PLAYING, VideoPlayer._ENDING):
-            self.omx.pause()
+            self.videoplayer.pause()
             return True
         else:
             self.mon.log(self, "!<pause rejected")
@@ -193,7 +193,7 @@ class VideoPlayer:
     def control(self, char):
         if self.play_state == VideoPlayer._PLAYING and char not in ('q'):
             self.mon.log(self, "> send control to omx: " + char)
-            self.omx.control(char)
+            self.videoplayer.control(char)
             return True
         else:
             self.mon.log(self, "!<control rejected")
@@ -220,10 +220,9 @@ class VideoPlayer:
         #self.iteration = 0          # for debugging
         self.quit_signal = False     # signal that user has pressed stop
         self.play_state = VideoPlayer._STARTING
-        
-        #play the selected track
-        options = self.omx_audio + " " + self.omx_volume + ' ' + self.omx_window + ' ' + self.show_params['omx-other-options'] + " "
-        self.omx.play(track, options)
+
+        # play the selected track
+        self.videoplayer.play(track)
         self.mon.log (self, 'Playing track from show Id: ' + str(self.show_id))
         # and start polling for state changes
         self.tick_timer = self.canvas.after(50, self.play_state_machine)
@@ -237,9 +236,9 @@ class VideoPlayer:
             self.mon.log(self, "      State machine: " + self.play_state)
 
             # if omxplayer is playing the track change to play state
-            if self.omx.start_play_signal == True:
+            if self.videoplayer.start_play_signal == True:
                 self.mon.log(self, "            <start play signal received from omx")
-                self.omx.start_play_signal = False
+                self.videoplayer.start_play_signal = False
                 self.play_state = VideoPlayer._PLAYING
                 self.mon.log(self, "      State machine: omx_playing started")
             self.tick_timer = self.canvas.after(50, self.play_state_machine)
@@ -249,14 +248,14 @@ class VideoPlayer:
             # service any queued stop signals
             if self.quit_signal == True:
                 self.mon.log(self, "      Service stop required signal")
-                self.stop_omx()
+                self.stop_videoplayer()
                 self.quit_signal = False
                 self.play_state = VideoPlayer._ENDING
 
             # omxplayer reports it is terminating so change to ending state
-            if self.omx.end_play_signal:                    
+            if self.videoplayer.end_play_signal:
                 self.mon.log(self, "            <end play signal received")
-                self.mon.log(self, "            <end detected at: " + str(self.omx.video_position))
+                self.mon.log(self, "            <end detected at: " + str(self.videoplayer.video_position))
                 self.play_state = VideoPlayer._ENDING
 
             self.tick_timer=self.canvas.after(200, self.play_state_machine)
@@ -264,19 +263,19 @@ class VideoPlayer:
         elif self.play_state == VideoPlayer._ENDING:
             self.mon.log(self, "      State machine: " + self.play_state)
             # if spawned process has closed can change to closed state
-            # self.mon.log (self,"      State machine : is omx process running? -  "  + str(self.omx.is_running()))
-            if self.omx.is_running() == False:
+            # self.mon.log (self,"      State machine : is omx process running? -  "  + str(self.videoplayer.is_running()))
+            if self.videoplayer.is_running() == False:
                 self.mon.log(self, "            <omx process is dead")
                 self.play_state = VideoPlayer._CLOSED
                 self.end('normal', 'quit by user or system')
             else:
                 self.tick_timer = self.canvas.after(200, self.play_state_machine)
 
-    def stop_omx(self):
+    def stop_videoplayer(self):
         # send signal to stop the track to the state machine
         self.mon.log(self, "         >stop omx received from state machine")
         if self.play_state == VideoPlayer._PLAYING:
-            self.omx.stop()
+            self.videoplayer.stop()
             return True
         else:
             self.mon.log(self, "!<stop rejected")
@@ -499,7 +498,7 @@ class Test:
     def loop_event(self, event):
       #just kick off the first track, callback decides what to do next
         self.break_from_loop = False
-        self.vp=VideoPlayer(self.canvas, self.show_params)
+        self.vp = VideoPlayer(self.canvas, self.show_params)
         self.vp.play(self.track, self.what_next, self,do_ready, False, self.do_starting, self.do_playing, self.do_finishing)
 
     def next_event(self, event):

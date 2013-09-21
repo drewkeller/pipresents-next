@@ -26,11 +26,6 @@ class AudioPlayer:
     _ENDING   = "mplayer_ending"   # track is in the process of ending due to quit or end of track
     _WAITING  = "wait for timeout" # track has finished but timeout still running
 
-# audio mixer matrix settings
-    _LEFT   = "channels=2:1:0:0:1:1"
-    _RIGHT  = "channels=2:1:0:1:1:0"
-    _STEREO = "channels=2"
-
 
 # ***************************************
 # EXTERNAL COMMANDS
@@ -54,6 +49,13 @@ class AudioPlayer:
         self.track_params = track_params
         self.pp_home      = pp_home
         self.pp_profile   = pp_profile
+        self.tick_timer   = None
+
+        #create an instance of PPIO so we can create gpio events
+        self.ppio = PPIO()
+
+        # could put instance generation in play, not sure which is better.
+        self.audioplayer = playerDriver(self.canvas)
 
         # get duration limit (secs ) from profile
         if self.track_params['duration'] != '':
@@ -75,41 +77,27 @@ class AudioPlayer:
             self.background_colour = self.show_params['background-colour']
 
         # get audio device from profile.
-        if  self.track_params['mplayer-audio'] != "":
-            self.mplayer_audio = self.track_params['mplayer-audio']
+        if self.track_params['mplayer-audio'] != "":
+            self.audioplayer.set_audio(self.track_params['mplayer-audio'])
         else:
-            self.mplayer_audio = self.show_params['mplayer-audio']
+            self.audioplayer.set_audio(self.show_params['mplayer-audio'])
 
         # get audio volume from profile.
-        if  self.track_params['mplayer-volume'] != "":
-            self.mplayer_volume = self.track_params['mplayer-volume'].strip()
+        if self.track_params['mplayer-volume'] != "":
+            self.audioplayer.set_volume(self.track_params['mplayer-volume'])
         else:
-            self.mplayer_volume = self.show_params['mplayer-volume'].strip()
-        self.volume_option = 'volume=' + self.mplayer_volume
+            self.audioplayer.set_volume(self.show_params['mplayer-volume'])
 
         #get speaker from profile
         if  self.track_params['audio-speaker'] != "":
-            self.audio_speaker= self.track_params['audio-speaker']
+            self.audioplayer.set_speaker(self.track_params['audio-speaker'])
         else:
-            self.audio_speaker= self.show_params['audio-speaker']
-
-        if self.audio_speaker == 'left':
-            self.speaker_option = AudioPlayer._LEFT
-        elif self.audio_speaker == 'right':
-            self.speaker_option = AudioPlayer._RIGHT
-        else:
-            self.speaker_option = AudioPlayer._STEREO
+            self.audioplayer.set_speaker(self.show_params['audio-speaker'])
 
         #get animation instructions from profile
         self.animate_begin_text = self.track_params['animate-begin']
         self.animate_end_text   = self.track_params['animate-end']
 
-        #create an instance of PPIO so we can create gpio events
-        self.ppio = PPIO()
-
-        # could put instance generation in play, not sure which is better.
-        self.mplayer    = mplayerDriver(self.canvas)
-        self.tick_timer = None
         self.init_play_state_machine()
 
     def play(self,
@@ -173,13 +161,13 @@ class AudioPlayer:
         reason will be killed or error
         """
         # circumvents state machine to terminate lower level and then itself.
-        if self.mplayer:
-            self.mon.log(self, "sent terminate to mplayerdriver")
-            self.mplayer.terminate(reason)
-            self.end('killed', ' end without waiting for mplayer to finish') # end without waiting
+        if self.audioplayer:
+            self.mon.log(self, "sent terminate to audioplayer driver")
+            self.audioplayer.terminate(reason)
+            self.end('killed', ' end without waiting for audioplayer to finish') # end without waiting
         else:
-            self.mon.log(self, "terminate, mplayerdriver not running")
-            self.end('killed', 'terminate, mplayerdriver not running')
+            self.mon.log(self, "terminate, audioplayer driver not running")
+            self.end('killed', 'terminate, audioplayer driver not running')
 
     def get_links(self):
         return self.track_params['links']
@@ -199,7 +187,7 @@ class AudioPlayer:
     #toggle pause
     def pause(self):
         if self.play_state in (AudioPlayer._PLAYING,AudioPlayer._ENDING) and self.track != '':
-            self.mplayer.pause()
+            self.audioplayer.pause()
             return True
         else:
             self.mon.log(self, "!<pause rejected")
@@ -208,8 +196,8 @@ class AudioPlayer:
     # other control when playing, not currently used
     def control(self, char):
         if self.play_state == AudioPlayer._PLAYING and self.track != ''and char not in ('q'):
-            self.mon.log(self, "> send control to mplayer: " + char)
-            self.mplayer.control(char)
+            self.mon.log(self, "> send control to audioplayer driver: " + char)
+            self.audioplayer.control(char)
             return True
         else:
             self.mon.log(self, "!<control rejected")
@@ -228,10 +216,10 @@ class AudioPlayer:
 
     """self. play_state controls the playing sequence, it has the following values.
          I am not entirely sure the starting and ending states are required.
-         - _closed - the mplayer process is not running, mplayer process can be initiated
-         - _starting - mplayer process is running but is not yet able to receive controls
+         - _closed - the audioplayer driver process is not running, audioplayer process can be initiated
+         - _starting - audioplayer driver process is running but is not yet able to receive controls
          - _playing - playing a track, controls can be sent
-         - _ending - mplayer is doing its termination, controls cannot be sent
+         - _ending - audioplayer driver is doing its termination, controls cannot be sent
     """
 
     def init_play_state_machine(self):
@@ -244,9 +232,8 @@ class AudioPlayer:
         self.quit_signal    = False     # signal that user has pressed stop
 
         #play the track
-        options = self.show_params['mplayer-other-options'] + ' -af ' + self.speaker_option + ',' + self.volume_option + ' '
         if self.track != '':
-            self.mplayer.play(self.track,options)
+            self.audioplayer.play(self.track)
             self.mon.log (self, 'Playing track from show Id: ' + str(self.show_id))
             self.play_state = AudioPlayer._STARTING
         else:
@@ -264,12 +251,12 @@ class AudioPlayer:
         elif self.play_state == AudioPlayer._STARTING:
             self.mon.log(self, "      State machine: " + self.play_state)
 
-            # if mplayer is playing the track change to play state
-            if self.mplayer.start_play_signal:
-                self.mon.log(self, "            <start play signal received from mplayer")
-                self.mplayer.start_play_signal = False
+            # if audioplayer is playing the track change to play state
+            if self.audioplayer.start_play_signal:
+                self.mon.log(self, "            <start play signal received from audioplayer")
+                self.audioplayer.start_play_signal = False
                 self.play_state=AudioPlayer._PLAYING
-                self.mon.log(self, "      State machine: mplayer_playing started")
+                self.mon.log(self, "      State machine: audioplayer_playing started")
             self.tick_timer = self.canvas.after(50, self.play_state_machine)
 
         elif self.play_state == AudioPlayer._PLAYING:
@@ -279,25 +266,25 @@ class AudioPlayer:
                 self.mon.log(self, "      Service stop required signal or timeout")
                 # self.quit_signal=False
                 if self.track != '':
-                    self.stop_mplayer()
+                    self.stop_audioplayer()
                     self.play_state = AudioPlayer._ENDING
                 else:
                     self.play_state = AudioPlayer._CLOSED
                     self.end('normal', 'stop required signal or timeout')
 
-            # mplayer reports it is terminating so change to ending state
-            if self.track != '' and self.mplayer.end_play_signal:
+            # audioplayer reports it is terminating so change to ending state
+            if self.track != '' and self.audioplayer.end_play_signal:
                 self.mon.log(self, "            <end play signal received")
-                self.mon.log(self, "            <end detected at: " + str(self.mplayer.audio_position))
+                self.mon.log(self, "            <end detected at: " + str(self.audioplayer.audio_position))
                 self.play_state = AudioPlayer._ENDING
             self.tick_timer = self.canvas.after(50, self.play_state_machine)
 
         elif self.play_state == AudioPlayer._ENDING:
             # self.mon.log(self,"      State machine: " + self.play_state)
             # if spawned process has closed can change to closed state
-            # self.mon.log (self,"      State machine : is mplayer process running? -  "  + str(self.mplayer.is_running()))
-            if not self.mplayer.is_running():
-                self.mon.log(self, "            <mplayer process is dead")
+            # self.mon.log (self,"      State machine : is audioplayer process running? -  "  + str(self.audioplayer.is_running()))
+            if not self.audioplayer.is_running():
+                self.mon.log(self, "            <audioplayer process is dead")
                 if self.quit_signal:
                     self.quit_signal = False
                     self.play_state  = AudioPlayer._CLOSED
@@ -307,7 +294,7 @@ class AudioPlayer:
                     self.tick_timer = self.canvas.after(50, self.play_state_machine)
                 else:
                     self.play_state = AudioPlayer._CLOSED
-                    self.end('normal', 'mplayer dead')
+                    self.end('normal', 'audioplayer dead')
             else:
                 self.tick_timer = self.canvas.after(50, self.play_state_machine)
 
@@ -317,15 +304,15 @@ class AudioPlayer:
                 self.mon.log(self, "      Service stop required signal or timeout from wait")
                 self.quit_signal = False
                 self.play_state  = AudioPlayer._CLOSED
-                self.end('normal', 'mplayer dead')
+                self.end('normal', 'audioplayer dead')
             else:
                 self.tick_timer = self.canvas.after(50, self.play_state_machine)
 
-    def stop_mplayer(self):
+    def stop_audioplayer(self):
         # send signal to stop the track to the state machine
-        self.mon.log(self, "         >stop mplayer received from state machine")
+        self.mon.log(self, "         >stop audioplayer received from state machine")
         if self.play_state == AudioPlayer._PLAYING:
-            self.mplayer.stop()
+            self.audioplayer.stop()
             return True
         else:
             self.mon.log(self, "!<stop rejected")

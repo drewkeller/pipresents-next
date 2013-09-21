@@ -10,7 +10,7 @@ from pp_utils import Monitor
  pyomxplayer from https://github.com/jbaiter/pyomxplayer
  extensively modified by KenT
 
- mplayerDriver hides the detail of using the mplayer command  from audioplayer
+ playerDriver hides the detail of using the mplayer command  from audioplayer
  This is meant to be used with pp_audioplayer.py
  Its easy to end up with many copies of mplayer running if this class is not used with care.
  use pp_audioplayer.py for a safer interface.
@@ -18,7 +18,7 @@ from pp_utils import Monitor
 
  External commands
  ----------------------------
- __init__ just creates the instance and initialises variables (e.g. mplayer=mplayerDriver())
+ __init__ just creates the instance and initialises variables (e.g. mplayer=playerDriver())
  play      - plays a track
  pause     - toggles pause
  control   - sends controls to mplayer while a track is playing (use stop and pause instead of q and p)
@@ -39,12 +39,17 @@ Signals
 
 """
 
-class mplayerDriver(object):
+class playerDriver(object):
 
     _STATUS_REXP = re.compile(r"V :\s*([\d.]+).*")
     _DONE_REXP = re.compile(r"Exiting*")
 
     _LAUNCH_CMD = 'mplayer -quiet '
+
+# audio mixer matrix settings
+    _LEFT   = "channels=2:1:0:0:1:1"
+    _RIGHT  = "channels=2:1:0:1:1:0"
+    _STEREO = "channels=2"
 
     def __init__(self, widget):
 
@@ -53,10 +58,37 @@ class mplayerDriver(object):
         self.mon.off()
         self._process = None
         self.paused   = None
+        self.options    = []
+        self.af_options = []
 
     def control(self, char):
         if self._process:
             self._process.send(char)
+
+    def set_audio(self, val):
+        if val != "":
+            self.mon.log(self, "playerDriver: set_audio not implemented")
+
+    def set_volume(self, val):
+        if val != "":
+            self.af_options.append(val)
+
+    def set_speaker(self, val):
+        if val != "":
+            if val == 'left':
+                self.af_options.append(playerDriver._LEFT)
+            elif val == 'right':
+                self.af_options.append(playerDriver._RIGHT)
+            else:
+                self.af_options.append(playerDriver._STEREO)
+
+    def set_window(self, val):
+        if val != "":
+            self.mon.log(self, "playerDriver: set_window not implemented")
+
+    def add_options(self, val):
+        if val != "":
+            self.options.append(str(val))
 
     def pause(self):
         if self._process:
@@ -66,12 +98,12 @@ class mplayerDriver(object):
             else:
                 self.paused = False
 
-    def play(self, track, options):
-        self._pp(track, options,False)
+    def play(self, track):
+        self._pp(track, False)
 
-    def prepare(self, track, options):
-        self._pp(track, options,True)
-    
+    def prepare(self, track):
+        self._pp(track, True)
+
     def show(self):
         # unpause to start playing
         if self._process:
@@ -101,14 +133,19 @@ class mplayerDriver(object):
 # INTERNAL FUNCTIONS
 # ************************************
 
-    def _pp(self, track, options,  pause_before_play):
-        self.paused=False
+    def _pp(self, track, pause_before_play):
+        self.paused            = False
         self.start_play_signal = False
-        self.end_play_signal=False
-        self.terminate_reason=''
-        track= "'"+ track.replace("'","'\\''") + "'"
-        cmd = mplayerDriver._LAUNCH_CMD + options +" " + track
-        self.mon.log(self, "Send command to mplayer: "+ cmd)
+        self.end_play_signal   = False
+        self.terminate_reason  = ''
+        track = "'" + track.replace("'", "'\\''") + "'"
+        cmd   = playerDriver._LAUNCH_CMD + ' '
+        if len(self.options):
+            cmd += ' '.join(self.options) + ' '
+        if len(self.af_options):
+            cmd += ' -af ' + ','.join(self.af_options) + ' '
+        cmd += track
+        self.mon.log(self, "Send command to mplayer: " + cmd)
         self._process = pexpect.spawn(cmd)
 
         # uncomment to monitor output to and input from mplayer (read pexpect manual)
@@ -133,10 +170,10 @@ class mplayerDriver(object):
         self.audio_position=0.0
 
         while True:
-            index = self._process.expect([mplayerDriver._STATUS_REXP,
+            index = self._process.expect([playerDriver._STATUS_REXP,
                                             pexpect.TIMEOUT,
                                             pexpect.EOF,
-                                            mplayerDriver._DONE_REXP])
+                                            playerDriver._DONE_REXP])
             if index == 1:
                 continue            # timeout - it doesn't block so is a thread needed?
             elif index in (2, 3):
