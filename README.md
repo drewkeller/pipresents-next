@@ -157,9 +157,10 @@ Cubieboard
 * Test mpv / mplayer from the command line, before starting a presentation because they do not exit at the end of a file, which seems to be a bug in pulseaudio.
 
 in /etc/pulse/client.conf set:
-    autospawn = no
-    daemon-binary = /bin/true
-    
+
+        autospawn = no
+        daemon-binary = /bin/true
+
 and restart pulseaudio (/etc/init.d/pulseaudio restart).
 
 * depending on the video- / audioplayer used, the "omx-other-options" parameter must be changed
