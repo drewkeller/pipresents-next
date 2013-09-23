@@ -3,6 +3,20 @@ PI PRESENTS  - Version 1.2.2
 
 This repository contains Beta Test software for the next version of Pi Presents. If you are unhappy with bleeding edge software then use the main Pi Presents repository and upgrade later.
 
+DIFFERENCES TO KenT2s pipresents-next
+=====================================
+
+* Support for gootoomoon's WiringCB-python Module to interact with GPIO. At the moment the RPi Python Module is not supported on the Cubieboard. The library to be used is depending on the Hardware it's running on.
+
+* Support for MPV Player for video and audio presentations, including vdapu support
+
+* Unified driver interface for:
+    Rpi and WiringCB for GPIO Support, configuration files are located in pp_home/gpio_rpiv1.cfg and pp_home/gpio_cb.cfg
+    mpv, mplayer and omxplayer for audio and/or video presentations
+    
+* audio device output is set as a mpv / mplayer option, not globally with amixer command
+
+* "omx-other-options" can be used for the whole show or per track
 
 FOR BETA TESTERS
 ================
@@ -78,7 +92,22 @@ From a terminal window open in your home directory type:
          sudo python ./setup.py install
 
 Return the terminal window to the home directory.
-	   
+
+Cubieboard only: Download and install libvdpau-sunxi
+----------------------------------------------------
+
+Follow the instructions on https://github.com/linux-sunxi/libvdpau-sunxi
+
+Cubieboard only: Download and install mpv
+-----------------------------------------
+
+Follow the instructions on https://github.com/mpv-player/mpv-build
+
+Cubieboard only: Download and install Wiring-CB
+-----------------------------------------------
+
+Follow the instructions on https://github.com/gootoomoon/WiringCB-python
+
 Download Pi Presents
 --------------------
 
@@ -114,6 +143,26 @@ to see a repeating multimedia show.
 
 Now read the manual to try other examples.
 
+Quirks
+======
+
+Raspberry Pi
+------------
+
+Cubieboard
+----------
+
+* the mpv player is not yet autoselectef, change the includes in pp_videoplayer.py to select it
+
+* Test mpv / mplayer from the command line, before starting a presentation because they do not exit at the end of a file, which seems to be a bug in pulseaudio.
+
+in /etc/pulse/client.conf set:
+    autospawn = no
+    daemon-binary = /bin/true
+    
+and restart pulseaudio (/etc/init.d/pulseaudio restart).
+
+* depending on the video- / audioplayer used, the "omx-other-options" parameter must be changed
 
 Updating Pi Presents
 =====================
@@ -159,11 +208,20 @@ I have started a new thread on the forum for the beta test, see below.
 		 
 Requirements
 ============
+
+Raspberry Pi
+------------
+
 Pi Presents was developed on Raspbian using Python 2.7. It will run on a Rev.1 or Rev.2 Pi. On 256MB machines display of large images (.jpg etc.) will run out of RAM and crash the Pi.
 
 I don't know the exact maximum but keep images in the 1 Megapixel range. Larger images, greater than the screen pixel size, will do nothing to improve the picture and will take longer to display even on 512MB machines.
 
 omxplayer plays some videos using 64MB of RAM; others need 128MB, especially if you want sub-titles. 
+
+Cubieboard
+----------
+
+Pi Presents was tested on Cubieez (http://www.cubieforums.com/index.php?topic=442.0) on Cubieboard 1 (A10 Processor). It should also run an Cubieboard 2 (A20) processor, because it has the same pinout as it's predecessor.
 
 
 Bug Reports and Feature Requests
