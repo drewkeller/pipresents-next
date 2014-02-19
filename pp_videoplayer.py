@@ -8,8 +8,10 @@ import PIL.ImageTk
 import PIL.ImageEnhance
 
 from pp_showmanager import ShowManager
+from pp_pluginmanager import PluginManager
 from pp_omxdriver as playerDriver
 #from pp_mpvdriver import playerDriver
+#from pp_omxdriver import OMXDriver
 from pp_gpio import PPIO
 from pp_utils import Monitor
 
@@ -30,9 +32,11 @@ class VideoPlayer:
 
     def __init__(self,
                  show_id,
+                 root,
                  canvas,
                  show_params,
                  track_params,
+                 pp_dir,
                  pp_home,
                  pp_profile):
 
@@ -41,9 +45,11 @@ class VideoPlayer:
 
         #instantiate arguments
         self.show_id      = show_id
+        self.root         = root
         self.canvas       = canvas
         self.show_params  = show_params
         self.track_params = track_params
+        self.pp_dir       = pp_dir
         self.pp_home      = pp_home
         self.pp_profile   = pp_profile
         self.videoplayer  = playerDriver(self.canvas)
@@ -71,6 +77,7 @@ class VideoPlayer:
         else:
             if result != "centred":
                 self.videoplayer.set_window(omx_window)
+            #self.omx_window= self.show_params['omx-window']
 
         if self.track_params['omx-other-options'] != '':
             self.videoplayer.add_options(self.track_params['omx-other-options'])
@@ -78,10 +85,12 @@ class VideoPlayer:
             self.videoplayer.add_options(self.show_params['omx-other-options'])
 
         # get background image from profile.
+        self.background_file = ''
         if self.track_params['background-image'] != "":
             self.background_file = self.track_params['background-image']
         else:
-            self.background_file = self.show_params['background-image']
+            if self.track_params['display-show-background'] == 'yes':
+                self.background_file = self.show_params['background-image']
 
         # get background colour from profile.
         if self.track_params['background-colour'] != "":
@@ -95,6 +104,9 @@ class VideoPlayer:
         # get animation instructions from profile
         self.animate_begin_text = self.track_params['animate-begin']
         self.animate_end_text   = self.track_params['animate-end']
+
+        # open the plugin Manager
+        self.pim=PluginManager(self.show_id,self.root,self.canvas,self.show_params,self.track_params,self.pp_dir,self.pp_home,self.pp_profile) 
 
         # create an instance of PPIO so we can create gpio events
         self.ppio = PPIO()
@@ -110,6 +122,7 @@ class VideoPlayer:
                    enable_menu = False):
 
         # instantiate arguments
+        self.track          = track
         self.showlist       = showlist
         self.ready_callback = ready_callback   # callback when ready to play
         self.end_callback   = end_callback     # callback when finished
@@ -120,32 +133,47 @@ class VideoPlayer:
             self.ready_callback()
 
         # create an  instance of showmanager so we can control concurrent shows
-        self.show_manager = ShowManager(self.show_id, self.showlist, self.show_params, self.canvas, self.pp_profile, self.pp_home)
+        self.show_manager = ShowManager(self.show_id, self.showlist, self.show_params, self.root, self.canvas, self.pp_dir, self.pp_profile, self.pp_home)
 
-        # Control other shows at beginning
-        reason, message = self.show_manager.show_control(self.track_params['show-control-begin'])
-        if reason in ('error', 'killed'):
-            self.end_callback(reason,message)
-            self = None
+        #set up video window
+        reason, message ,comand, has_window, x1, y1, x2, y2 = self.parse_window(self.omx_window)
+        if reason =='error':
+            self.mon.err(self, 'omx window error: ' + message + ' in ' + self.omx_window)
+            self.end_callback(reason, message)
         else:
-            # display the background
-            self.display_content()
+            if has_window == True:
+                self.omx_window = '--win " ' + str(x1) +  ' ' + str(y1) + ' ' + str(x2) + ' ' + str(y2) + ' " '
+            else:
+                self.omx_window = ''
 
-            # create animation events
-            reason, message = self.ppio.animate(self.animate_begin_text, id(self))
-            if reason == 'error':
-                self.mon.err(self, message)
-                self.end_callback(reason, message)
+            # Control other shows at beginning
+            reason, message = self.show_manager.show_control(self.track_params['show-control-begin'])
+            if reason in ('error', 'killed'):
+                self.end_callback(reason,message)
                 self = None
             else:
-                # start playing the video.
-                if self.play_state == VideoPlayer._CLOSED:
-                    self.mon.log(self, ">play track received")
-                    self.start_play_state_machine(track)
-                else:
-                    self.mon.err(self, 'play track rejected')
-                    self.end_callback('error', 'play track rejected')
+                # display the background
+                reason, message = self.display_content()
+                if reason == 'error':
+                    self.mon.err(self, message)
+                    self.end_callback(reason, message)
                     self = None
+                else:
+                    # create animation events
+                    reason, message = self.ppio.animate(self.animate_begin_text, id(self))
+                    if reason == 'error':
+                        self.mon.err(self, message)
+                        self.end_callback(reason, message)
+                        self = None
+                    else:
+                        # start playing the video.
+                        if self.play_state == VideoPlayer._CLOSED:
+                            self.mon.log(self, ">play track received")
+                            self.start_play_state_machine(self.track)
+                        else:
+                            self.mon.err(self, 'play track rejected')
+                            self.end_callback('error', 'play track rejected')
+                            self = None
 
     def terminate(self, reason):
         # circumvents state machine and does not wait for omxplayer to close
@@ -251,13 +279,19 @@ class VideoPlayer:
                 self.mon.log(self, "      Service stop required signal")
                 self.stop_videoplayer()
                 self.quit_signal = False
-                self.play_state = VideoPlayer._ENDING
+                #self.play_state = VideoPlayer._ENDING
 
             # omxplayer reports it is terminating so change to ending state
             if self.videoplayer.end_play_signal:
                 self.mon.log(self, "            <end play signal received")
                 self.mon.log(self, "            <end detected at: " + str(self.videoplayer.video_position))
+                if self.videoplayer.end_play_reason <> 'nice_day':
+                    # deal with omxplayer not sending 'have a nice day'
+                    self.mon.warn(self, "            <end detected at: " + str(self.videoplayer.video_position))
+                    self.mon.warn(self, "            <pexpect reports: " + self.videoplayer.end_play_reason)
+                    self.mon.warn(self, 'pexpect.before  is' + self.videoplayer.xbefore)
                 self.play_state = VideoPlayer._ENDING
+                self.ending_count = 0
 
             self.tick_timer=self.canvas.after(200, self.play_state_machine)
 
@@ -270,7 +304,17 @@ class VideoPlayer:
                 self.play_state = VideoPlayer._CLOSED
                 self.end('normal', 'quit by user or system')
             else:
-                self.tick_timer = self.canvas.after(200, self.play_state_machine)
+                self.ending_count += 1
+                if self.ending_count > 10:
+                    # deal with omxplayer not terminating at the end of a track
+                    self.mon.warn(self, "            <omxplayer failed to close at: " + str(self.videoplayer.video_position))
+                    self.mon.warn(self, 'pexpect.before  is'+self.videoplayer.xbefore)
+                    self.videoplayer.kill()
+                    self.mon.warn(self, 'omxplayer now  terminated ')
+                    self.play_state = VideoPlayer._CLOSED
+                    self.end('normal', 'end from omxplayer failed to terminate')
+                else:
+                    self.tick_timer = self.canvas.after(200, self.play_state_machine)
 
     def stop_videoplayer(self):
         # send signal to stop the track to the state machine
@@ -288,6 +332,11 @@ class VideoPlayer:
 # *****************
 
     def end(self, reason, message):
+
+            # stop the plugin
+            if self.track_params['plugin'] != '':
+                self.pim.stop_plugin()
+
             # os.system("xrefresh -display :0")
             # abort the timer
             if self.tick_timer != None:
@@ -351,6 +400,13 @@ class VideoPlayer:
                                                       anchor = CENTER,
                                                       tag = 'pp-content')
 
+        # execute the plugin if required
+        if self.track_params['plugin'] != '':
+
+            reason, message, self.track = self.pim.do_plugin(self.track, self.track_params['plugin'],)
+            if reason != 'normal':
+                return reason, message
+
         # display show text if enabled
         if self.show_params['show-text'] != '':
             self.canvas.create_text(int(self.show_params['show-text-x']),
@@ -360,7 +416,6 @@ class VideoPlayer:
                                     fill = self.show_params['show-text-colour'],
                                     font = self.show_params['show-text-font'],
                                     tag  = 'pp-content')
-
 
         # display track text if enabled
         if self.track_params['track-text'] != '':
@@ -374,15 +429,17 @@ class VideoPlayer:
 
         # display instructions if enabled
         if self.enable_menu == True:
-            self.canvas.create_text(self.centre_x,
-                                    int(self.canvas['height']) - int(self.show_params['hint-y']),
+            self.canvas.create_text(int(self.show_params['hint-x']),
+                                    int(self.show_params['hint-y']),
                                     text = self.show_params['hint-text'],
                                     fill = self.show_params['hint-colour'],
                                     font = self.show_params['hint-font'],
+                                    anchor = NW,
                                     tag  = 'pp-content')
 
         self.canvas.tag_raise('pp-click-area')
         self.canvas.update_idletasks()
+        return 'normal', ''
 
 
 # ****************
@@ -396,38 +453,56 @@ class VideoPlayer:
         self.mon.log(self, "Background image is " + track_file)
         return track_file
 
+# original _
+# warp _ or xy2
 
     def parse_window(self, line):
-        fields = line.split()
-        if len(fields) not in (1, 4):
-            return 'error', ''
-        else:
-            if len(fields) == 1:
-                if fields[0] == 'centred':
-                    return 'normal', fields[0]
-                else:
-                    return 'error', ''
 
-            elif len(fields) == 4:
-                if fields[0].isdigit() and fields[1].isdigit() and fields[2].isdigit() and fields[3].isdigit():
-                    return 'normal', line
-                else:
-                    return 'error',''
+        fields = line.split()
+        # check there is a command field
+        if len(fields) < 1:
+                return 'error', 'no type field', '', False, 0, 0, 0, 0
+
+        # deal with original which has 1
+        if fields[0] == 'original':
+            if len(fields) != 1:
+                    return 'error', 'number of fields for original', '', False, 0, 0, 0, 0
+            return 'normal', '', fields[0], False, 0, 0, 0, 0
+
+        #deal with warp which has 1 or 5  arguments
+        # check basic syntax
+        if  fields[0] != 'warp':
+                return 'error', 'not a valid type', '', False, 0, 0, 0, 0
+        if len(fields) not in (1,5):
+                return 'error', 'wrong number of coordinates for warp', '', False, 0, 0, 0, 0
+
+        # deal with window coordinates
+        if len(fields) == 5:
+            #window is specified
+            if not (fields[1].isdigit() and fields[2].isdigit() and fields[3].isdigit() and fields[4].isdigit()):
+                return 'error', 'coordinates are not positive integers', '', False, 0, 0, 0, 0
+            has_window=True
+            return 'normal', '', fields[0], has_window, int(fields[1]), int(fields[2]), int(fields[3]), int(fields[4])
+        else:
+            # fullscreen
+            has_window = True
+            return 'normal', '', fields[0], has_window, 0, 0, self.canvas['width'], self.canvas['height']
 
 
 # *****************
-# Test harness follows
+#Test harness follows - THIS IS OUT OF DATE
 # *****************
 
 class Test:
 
     def __init__(self, track, show_params, track_params):
 
-        self.track           = track
-        self.show_params     = show_params
-        self.track_params    = track_params
+        self.track = track
+        self.show_params = show_params
+        self.track_params = track_params
         self.break_from_loop = False
 
+        self.vp = None
         # create and instance of a Tkinter top level window and refer to it as 'my_window'
         my_window = Tk()
         my_window.title("VideoPlayer Test Harness")
@@ -485,7 +560,7 @@ class Test:
         self.terminate()
 
     def play_event(self,event):
-        self.vp = VideoPlayer(self.canvas, self.show_params, self.track_params)
+        self.vp = VideoPlayer(1, my_window, self.canvas, self.show_params, self.track_params)
         self.vp.play(self.track, self.on_end, self.do_ready, False, self.do_starting, self.do_playing, self.do_finishing)
 
     # toggles pause
@@ -569,16 +644,18 @@ if __name__ == '__main__':
     Monitor.log_path = pp_dir
     Monitor.global_enable = True
 
-    track = "/home/pi/pp_home/media/Suits-short.mkv"
+    track = "/home/pi/pp_home/media/suits-short.mkv"
 
     #create a dictionary of options and call the test class
-    show_params = {'omx-other-options': '',
-                   'omx-audio': '',
-                   'speaker': 'left',
-                   'animate-begin': 'out1 on 1\nout1 off 20',
-                   'animate-end': '',
-                   'animate-clear': 'yes'
-                   }
+    show_params = {'omx-other-options' : '',
+                   'omx-audio'         : '',
+                   'speaker'           : 'left',
+                   'animate-begin'     : 'out1 on 1\nout1 off 20',
+                   'animate-end'       : '',
+                   'animate-clear'     : 'yes',
+                   'omx-volume'        : '0',
+                   'omx-window'        : '0 0 900 900'
+                  }
 
     test = Test(track, show_params, show_params)
 

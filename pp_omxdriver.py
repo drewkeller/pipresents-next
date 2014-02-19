@@ -1,3 +1,4 @@
+import os
 import pexpect
 import re
 import sys
@@ -23,7 +24,8 @@ from pp_utils import Monitor
  control   - sends controls to omxplayer.bin  while track is playing (use stop and pause instead of q and p)
  stop      - stops a video that is playing.
  terminate - Stops a video playing. Used when aborting an application.
-
+ kill      - kill of omxplayer when it hasn't terminated at the end of a track.
+ 
  Advanced:
  prepare - processes the track up to where it is ready to display, at this time it pauses.
  show    - plays the video from where 'prepare' left off by resuming from the pause.
@@ -40,7 +42,7 @@ Signals
 
 class playerDriver(object):
 
-    _STATUS_REXP = re.compile(r"V :\s*([\d.]+).*")
+    _STATUS_REXP = re.compile(r"M:\s*(\w*)\s*V:")
     _DONE_REXP = re.compile(r"have a nice day.*")
 
     _LAUNCH_CMD = '/usr/bin/omxplayer -s '  #needs changing if user has installed his own version of omxplayer elsewhere
@@ -49,9 +51,9 @@ class playerDriver(object):
 
         self.widget = widget
         self.mon    = Monitor()
-        self.mon.off()
-        self._process = None
+        self.mon.on()
         self.paused   = None
+        self._process = None
         self.options  = []
 
     def control(self, char):
@@ -107,8 +109,8 @@ class playerDriver(object):
         self.terminate_reason = reason
         if self._process:
             self._process.send('q')
-        else:
-            self.end_play_signal = True
+        #else:
+        #    self.end_play_signal = True
 
     def terminate_reason(self):
         return self.terminate_reason
@@ -116,6 +118,12 @@ class playerDriver(object):
    # test of whether _process is running
     def is_running(self):
         return self._process.isalive()
+
+     # kill of omxplayer when it hasn't terminated at the end of a track.
+    def kill(self):
+        killed = self._process.terminate(force = True)
+        os.system('killall omxplayer.bin')
+        return killed
 
 # ***********************************
 # INTERNAL FUNCTIONS
@@ -154,21 +162,39 @@ class playerDriver(object):
         self.audio_position    = 0.0
 
         while True:
-            index = self._process.expect([playerDriver._STATUS_REXP,
-                                            pexpect.TIMEOUT,
-                                            pexpect.EOF,
-                                            playerDriver._DONE_REXP])
-            if index == 1:
-                continue
-            elif index in (2, 3):
+            index = self._process.expect([playerDriver._DONE_REXP,
+                                          pexpect.TIMEOUT,
+                                          pexpect.EOF,
+                                          OMXDriver._STATUS_REXP],
+                                          timeout = 10)
+            if index == 1: # timeout omxplayer should not do this
+                self.end_play_signal = True
+                self.xbefore=self._process.before
+                self.xafter=self._process.after
+                self.match=self._process.match
+                self.end_play_reason = 'timeout'
+                break
+                # continue
+            elif index == 2: # 2 is eof omxplayer should not send this
+                #eof detected
+                self.end_play_signal = True
+                self.xbefore=self._process.before
+                self.xafter=self._process.after
+                self.match=self._process.match
+                self.end_play_reason = 'eof'
+                break
+            elif index == 0: # 0 is done
                 #Have a nice day detected
                 self.end_play_signal = True
+                self.xbefore=self._process.before
+                self.xafter=self._process.after
+                self.match=self._process.match
+                self.end_play_reason = 'nice_day'
                 break
             else:
-                # presumably matches _STATUS_REXP so get video position
-                # has a bug, position is not displayed for an audio track (mp3). Need to look at another field in the status, but how to extract it
+                #  - 3 matches _STATUS_REXP so get time stamp
                 self.video_position = float(self._process.match.group(1))
                 self.audio_position = 0.0
             #sleep is Ok here as it is a seperate thread. self.widget.after has funny effects as its not in the maion thread.
-            sleep(0.05)
+            sleep(0.05)   # stats output rate seem to be about 170mS.
 
