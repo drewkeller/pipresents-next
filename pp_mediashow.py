@@ -101,7 +101,7 @@ class MediaShow:
 
 
         #create a medialist for the mediashow and read it.
-        self.medialist=MediaList()
+        self.medialist=MediaList(self.show_params['sequence'])
         if self.medialist.open_list(self.media_file,self.showlist.sissue())==False:
             self.mon.err(self,"Version of medialist different to Pi Presents")
             self.end('error',"Version of medialist different to Pi Presents")
