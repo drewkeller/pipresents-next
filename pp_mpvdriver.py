@@ -10,18 +10,18 @@ from pp_utils import Monitor
  pyomxplayer from https://github.com/jbaiter/pyomxplayer
  extensively modified by KenT
 
- playerDriver hides the detail of using the mplayer command  from audioplayer
+ playerDriver hides the detail of using the mpv command  from audioplayer
  This is meant to be used with pp_audioplayer.py
- Its easy to end up with many copies of mplayer running if this class is not used with care.
+ Its easy to end up with many copies of mpv running if this class is not used with care.
  use pp_audioplayer.py for a safer interface.
 
 
  External commands
  ----------------------------
- __init__ just creates the instance and initialises variables (e.g. mplayer=playerDriver())
+ __init__ just creates the instance and initialises variables (e.g. mpv=playerDriver())
  play      - plays a track
  pause     - toggles pause
- control   - sends controls to mplayer while a track is playing (use stop and pause instead of q and p)
+ control   - sends controls to mpv while a track is playing (use stop and pause instead of q and p)
  stop      - stops a video that is playing.
  terminate - Stops a video playing. Used when aborting an application.
 
@@ -35,7 +35,13 @@ Signals
  The following signals are produced while a track is playing
          self.start_play_signal = True when a track is ready to be shown
          self.end_play_signal= True when a track has finished due to stop or because it has come to an end
- Also is_running() tests whether the sub-process running mplayer is alive.
+ Also is_running() tests whether the sub-process running mpv is alive.
+
+mpv -no-border -geometry 960x540+480+270 -ao alsa:device=[hw:1,0] --hwdec vdpau ~/Desktop/big_buck_bunny_1080p_H264_AAC_25fps_7200K.MP4
+
+kill pulseaudio
+-ao alsa:device=[hw:0,0] = headphones
+-ao alsa:device=[hw:1,0] = hdmi
 
 """
 
@@ -43,13 +49,12 @@ class playerDriver(object):
 
     _STATUS_REXP = re.compile(r"V :\s*([\d.]+).*")
     _DONE_REXP = re.compile(r"Exiting*")
-
-    _LAUNCH_CMD = 'mplayer -quiet '
-
-# audio mixer matrix settings
+    # audio mixer matrix settings
     _LEFT   = "channels=2:1:0:0:1:1"
     _RIGHT  = "channels=2:1:0:1:1:0"
     _STEREO = "channels=2"
+
+    _LAUNCH_CMD = 'mpv -quiet -no-border --hwdec vdpau '
 
     def __init__(self, widget):
 
@@ -58,7 +63,7 @@ class playerDriver(object):
         self.mon.off()
         self._process = None
         self.paused   = None
-        self.options    = []
+        self.options  = []
         self.af_options = []
 
     def control(self, char):
@@ -66,12 +71,14 @@ class playerDriver(object):
             self._process.send(char)
 
     def set_audio(self, val):
-        if val != "":
-            self.mon.log(self, "playerDriver: set_audio not implemented")
+        if val == "hdmi":
+            self.options.append("-ao alsa:device=[hw:1,0]")
+        else:
+            self.options.append("-ao alsa:device=[hw:0,0]")
 
     def set_volume(self, val):
         if val != "":
-            self.af_options.append(val)
+            self.mon.log(self, "playerDriver: set_volume not implemented")
 
     def set_speaker(self, val):
         if val != "":
@@ -84,7 +91,8 @@ class playerDriver(object):
 
     def set_window(self, val):
         if val != "":
-            self.mon.log(self, "playerDriver: set_window not implemented")
+            fields = val.split()
+            self.options.append("-geometry " + str(int(fields[2]) - int(fields[0])) + '+' + str(int(fields[3]) - int(fields[1])) + '+' + str(fields[0]) + '+' + str(fields[1]))
 
     def add_options(self, val):
         if val != "":
@@ -114,7 +122,7 @@ class playerDriver(object):
         if self._process:
             self._process.send('q')
 
-    # kill the subprocess (mplayer). Used for tidy up on exit.
+    # kill the subprocess (mpv). Used for tidy up on exit.
     def terminate(self, reason):
         self.terminate_reason = reason
         if self._process:
@@ -143,13 +151,13 @@ class playerDriver(object):
         if len(self.options):
             cmd += ' '.join(self.options) + ' '
         if len(self.af_options):
-            cmd += ' -af ' + ','.join(self.af_options) + ' '
+            cmd += '-af ' + ','.join(self.af_options) + ' '
         cmd += track
-        self.mon.log(self, "Send command to mplayer: " + cmd)
+        self.mon.log(self, "Send command to mpv: " + cmd)
         self._process = pexpect.spawn(cmd)
 
-        # uncomment to monitor output to and input from mplayer (read pexpect manual)
-        # fout= file('/home/pi/pipresents/mplayerlogfile.txt','w')  #uncomment and change sys.stdout to fout to log to a file
+        # uncomment to monitor output to and input from mpv (read pexpect manual)
+        # fout= file('/home/pi/pipresents/mpvlogfile.txt','w')  #uncomment and change sys.stdout to fout to log to a file
         # self._process.logfile_send = sys.stdout  # send just commands to stdout
         # self._process.logfile=fout  # send all communications to log file
 
@@ -163,12 +171,9 @@ class playerDriver(object):
         self._position_thread.start()
 
     def _get_position(self):
-        #print 'hang'
-        #while True:
-                #pass
         self.start_play_signal = True
         self.video_position    = 0.0
-        self.audio_position=0.0
+        self.audio_position    = 0.0
 
         while True:
             index = self._process.expect([playerDriver._STATUS_REXP,
