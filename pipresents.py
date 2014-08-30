@@ -78,8 +78,8 @@ class PiPresents:
 
         #get profile path from -p option
         if self.options['profile'] != "":
-        else:
             self.pp_profile_path = "/pp_profiles/" + self.options['profile']
+        else:
             self.pp_profile_path = "/pp_profiles/pp_profile"
 
        #get directory containing pp_home from the command,

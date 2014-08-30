@@ -9,7 +9,6 @@ import PIL.ImageEnhance
 
 from pp_showmanager import ShowManager
 from pp_pluginmanager import PluginManager
-from pp_omxdriver as playerDriver
 #from pp_mpvdriver import playerDriver
 #from pp_omxdriver import OMXDriver
 from pp_gpio import PPIO
@@ -66,19 +65,22 @@ class VideoPlayer:
             self.videoplayer.set_audio(self.show_params['omx-volume'])
 
         if self.track_params['omx-window'] != '':
-            omx_window = self.track_params['omx-window']
+            self.omx_window = self.track_params['omx-window']
         else:
-            omx_window = self.show_params['omx-window']
+            self.omx_window = self.show_params['omx-window']
 
-        error, result = self.parse_window(omx_window)
-        if error == 'error':
-            self.mon.err(self, 'omx window error: ' + omx_window)
-            self.end('error', 'omx window error')
-        else:
-            if result != "centred":
-                self.videoplayer.set_window(omx_window)
-            #self.omx_window= self.show_params['omx-window']
+        # Quick fix... comment these out (was 'too many variables to unpack')
+        #error, result = self.parse_window(omx_window)
+        #if error == 'error':
+        #    self.mon.err(self, 'omx window error: ' + omx_window)
+        #    self.end('error', 'omx window error')
+        #else:
+        #    if result != "centred":
+        #        self.videoplayer.set_window(omx_window)
+        #    #self.omx_window= self.show_params['omx-window']
 
+        # Quick fix... set this to empty (otherwise not recognized?)
+        self.track_params['omx-other-options'] = ''
         if self.track_params['omx-other-options'] != '':
             self.videoplayer.add_options(self.track_params['omx-other-options'])
         else:
@@ -285,11 +287,12 @@ class VideoPlayer:
             if self.videoplayer.end_play_signal:
                 self.mon.log(self, "            <end play signal received")
                 self.mon.log(self, "            <end detected at: " + str(self.videoplayer.video_position))
-                if self.videoplayer.end_play_reason <> 'nice_day':
-                    # deal with omxplayer not sending 'have a nice day'
-                    self.mon.warn(self, "            <end detected at: " + str(self.videoplayer.video_position))
-                    self.mon.warn(self, "            <pexpect reports: " + self.videoplayer.end_play_reason)
-                    self.mon.warn(self, 'pexpect.before  is' + self.videoplayer.xbefore)
+                # Quick fix... comment these out (I think mpv driver needs to implement end_play_reason)
+                #if self.videoplayer.end_play_reason <> 'nice_day':
+                #    # deal with omxplayer not sending 'have a nice day'
+                #    self.mon.warn(self, "            <end detected at: " + str(self.videoplayer.video_position))
+                #    self.mon.warn(self, "            <pexpect reports: " + self.videoplayer.end_play_reason)
+                #    self.mon.warn(self, 'pexpect.before  is' + self.videoplayer.xbefore)
                 self.play_state = VideoPlayer._ENDING
                 self.ending_count = 0
 

@@ -7,12 +7,8 @@ import PIL.Image
 import PIL.ImageTk
 import PIL.ImageEnhance
 
-<<<<<<< HEAD
 from pp_mplayerdriver import playerDriver
-=======
-from pp_mplayerdriver import mplayerDriver
-from pp_pluginmanager import PluginManager
->>>>>>> 879c110554f68fec96746eb11bae987b2ed91d6f
+#from pp_pluginmanager import PluginManager
 from pp_showmanager import ShowManager
 from pp_gpio import PPIO
 from pp_utils import Monitor

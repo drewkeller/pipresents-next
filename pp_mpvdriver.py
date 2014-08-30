@@ -54,7 +54,10 @@ class playerDriver(object):
     _RIGHT  = "channels=2:1:0:1:1:0"
     _STEREO = "channels=2"
 
-    _LAUNCH_CMD = 'mpv -quiet -no-border --hwdec vdpau '
+    # Command line for running in VirtualBox (otherwise errors out with OpenGL errors)
+    _LAUNCH_CMD = 'mpv -quiet -no-border --vo=x11 --fs '
+    # Command line for CubieBoard
+    #_LAUNCH_CMD = 'mpv -quiet -no-border --hwdec vdpau '
 
     def __init__(self, widget):
 
