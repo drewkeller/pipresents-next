@@ -9,7 +9,7 @@ import PIL.ImageEnhance
 
 from pp_showmanager import ShowManager
 from pp_pluginmanager import PluginManager
-#from pp_mpvdriver import playerDriver
+from pp_mpvdriver import playerDriver
 #from pp_omxdriver import OMXDriver
 from pp_gpio import PPIO
 from pp_utils import Monitor
