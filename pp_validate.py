@@ -775,10 +775,10 @@ class Validator:
         if len(fields) not in (1,2,5,6):
             self.result.display('f','Wrong number of fields: ' + field + ", " + line)
             return
-        if len(fields)==6 and fields[5] not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
+        if len(fields)==6 and str(fields[5]).upper() not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
             self.result.display('f','Illegal Filter: ' + field + ", " + line)
             return
-        if len(fields)==2 and fields[1] not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
+        if len(fields)==2 and str(fields[1]).upper() not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
             self.result.display('f','Illegal Filter: ' + field + ", " + line)
         
         # deal with window coordinates    

@@ -442,6 +442,7 @@ class ImagePlayer:
     def parse_window(self,line):
         
             fields = line.split()
+            
             # check there is a command field
             if len(fields) < 1:
                     return 'error','',False,0,0,0,0,''
@@ -463,35 +464,34 @@ class ImagePlayer:
                     has_window=False 
                     return 'normal',fields[0],has_window,0,0,0,0,filter
 
-
-
             #deal with remainder which has 1, 2, 5 or  6arguments
             # check basic syntax
             if  fields[0] not in ('shrink','fit','warp'):
                     return 'error','',False,0,0,0,0,'' 
             if len(fields) not in (1,2,5,6):
                     return 'error','',False,0,0,0,0,''
-            if len(fields)==6 and fields[5] not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
+            if len(fields)==6 and str(fields[5]).upper() not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
                     return 'error','',False,0,0,0,0,''
-            if len(fields)==2 and fields[1] not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
+            if len(fields)==2 and str(fields[1]).upper() not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
                     return 'error','',False,0,0,0,0,''
             
             # deal with window coordinates    
             if len(fields) in (5,6):
+
                 #window is specified
                 if not (fields[1].isdigit() and fields[2].isdigit() and fields[3].isdigit() and fields[4].isdigit()):
                     return 'error','',False,0,0,0,0,''
                 has_window=True
                 if len(fields)==6:
-                    filter=fields[5]
+                    filter='PIL.Image.' + str(fields[5]).upper()
                 else:
                     filter='PIL.Image.NEAREST'
-                    return 'normal',fields[0],has_window,int(fields[1]),int(fields[2]),int(fields[3]),int(fields[4]),filter
+                return 'normal',fields[0],has_window,int(fields[1]),int(fields[2]),int(fields[3]),int(fields[4]),filter
             else:
                 # no window
                 has_window=False
                 if len(fields)==2:
-                    filter=fields[1]
+                    filter=str(fields[1]).upper()
                 else:
                     filter='PIL.Image.NEAREST'
                 return 'normal',fields[0],has_window,0,0,0,0,filter
