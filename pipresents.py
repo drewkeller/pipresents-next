@@ -97,7 +97,8 @@ class PiPresents:
         #   a) the given home dir
         #   b) a 'pp_home' dir within the given home dir (original PP operation)
         if self.options['home'] =="":
-            home = os.path.expanduser('~')+ os.sep+"pp_home"
+            home    = ""
+            home_pp = os.path.expanduser('~')+ os.sep+"pp_home"
         else:
             home    = self.options['home']
             home_pp = self.options['home'] + os.sep + "pp_home"
