@@ -483,10 +483,10 @@ class ImagePlayer:
                     return 'error','',False,0,0,0,0,''
                 has_window=True
                 if len(fields)==6:
-                    filter=fields[5]
+                    filter='PIL.Image.' + str(fields[5]).upper()
                 else:
                     filter='PIL.Image.NEAREST'
-                    return 'normal',fields[0],has_window,int(fields[1]),int(fields[2]),int(fields[3]),int(fields[4]),filter
+                return 'normal',fields[0],has_window,int(fields[1]),int(fields[2]),int(fields[3]),int(fields[4]),filter
             else:
                 # no window
                 has_window=False
