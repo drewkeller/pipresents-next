@@ -463,17 +463,15 @@ class ImagePlayer:
                     has_window=False 
                     return 'normal',fields[0],has_window,0,0,0,0,filter
 
-
-
             #deal with remainder which has 1, 2, 5 or  6arguments
             # check basic syntax
             if  fields[0] not in ('shrink','fit','warp'):
                     return 'error','',False,0,0,0,0,'' 
             if len(fields) not in (1,2,5,6):
                     return 'error','',False,0,0,0,0,''
-            if len(fields)==6 and fields[5] not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
+            if len(fields)==6 and str(fields[5]).upper() not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
                     return 'error','',False,0,0,0,0,''
-            if len(fields)==2 and fields[1] not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
+            if len(fields)==2 and str(fields[1]).upper() not in ('NEAREST','BILINEAR','BICUBIC','ANTIALIAS'):
                     return 'error','',False,0,0,0,0,''
             
             # deal with window coordinates    
@@ -491,7 +489,7 @@ class ImagePlayer:
                 # no window
                 has_window=False
                 if len(fields)==2:
-                    filter=fields[1]
+                    filter=str(fields[1]).upper()
                 else:
                     filter='PIL.Image.NEAREST'
                 return 'normal',fields[0],has_window,0,0,0,0,filter
