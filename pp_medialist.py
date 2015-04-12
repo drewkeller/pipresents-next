@@ -23,6 +23,7 @@ class MediaList:
         self.mon=Monitor()
         self.mon.on()
         self.sequence = sequence
+        self.mon.log(self, "sequence is " + self.sequence)
 
  # Functions for the editor dealing with complete list
 
@@ -36,8 +37,7 @@ class MediaList:
         print self._tracks
 
     def first(self):
-        self.selected_track_index = -1
-        self.next(self.sequence) # let this do the work of randomizing or advancing to 0
+        self.select(0)
 
     def length(self):
         return self._num_tracks
@@ -89,6 +89,8 @@ class MediaList:
     
     def selected_track(self):
         """returns a dictionary containing all fields in the selected track """
+        if self._selected_track_index == -1:
+            self.select(0)
         return self._selected_track
 
     def select(self,index):
@@ -103,17 +105,10 @@ class MediaList:
 # Dealing with anonymous tracks for use and display
      
     def at_end(self):
+        if self._num_tracks == 1:
+            return True
         # true is selected track is last anon
-        index=self._num_tracks-1
-        while index>=0:
-            if self._tracks[index] ['track-ref'] =="":
-                end=index
-                if self._selected_track_index==end:
-                    return True
-                else:
-                    return False
-            index -=1
-        return False
+        return self._selected_track_index == self._num_tracks-1
         
     def index_of_end(self):
         index=self._num_tracks-1
@@ -134,7 +129,7 @@ class MediaList:
                     return False
             index +=1
         return False
-   
+            
     def index_of_start(self):
         index=0
         while index<self._num_tracks:
@@ -155,7 +150,9 @@ class MediaList:
 
     def start(self):
         # select first anymous track in the list
+        # print "Starting media list"
         if self.sequence == 'ordered':
+            #print "Selecting first track (ordered)"
             index=0
             while index<self._num_tracks:
                 if self._tracks[index] ['track-ref'] =="":
@@ -164,6 +161,7 @@ class MediaList:
                 index +=1
             return False
         else:
+            # print "Selecting shuffled next"
             return self.next(self.sequence)
 
     def finish(self):
@@ -185,17 +183,24 @@ class MediaList:
                 
             end=self._selected_track_index
         else:
-            index=random.randint(0,self._num_tracks-1)
-            if index==0:
-                end=self._num_tracks-1
+            if self._num_tracks == 1:
+                index = 0
+                end = 0
             else:
-                end=index-1
+                index=random.randint(0,self._num_tracks-1)
+                if index==0:
+                    end=self._num_tracks-1
+                else:
+                    end=index-1
         #search for next anonymous track
-        # print 'index', index, 'end',end
+        self.mon.log(self, " ------ ")
+        #print '------------ shuffle result: index=', index, ', end=',end, ', num_tracks=', self._num_tracks
         while index<>end:
             if self._tracks[index] ['track-ref'] =="":
                 self.select(index)
                 return True
+            if self._num_tracks == 1:
+                return False
             if index== self._num_tracks-1:
                 index=0
             else:

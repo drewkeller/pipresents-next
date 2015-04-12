@@ -451,17 +451,17 @@ class MediaShow:
             if self.medialist.at_end()==True:
 
                 # oneshot
-                if self.show_params['sequence']=="ordered" and self.show_params['repeat']=='oneshot' and self.top==False:
+                if self.show_params['repeat']=='oneshot' and self.top==False:
                     self.end('normal',"End of Oneshot in subshow")
                     
                 elif self.show_params['sequence']=="ordered" and self.show_params['repeat']=='oneshot' and self.top==True:
                     self.wait_for_trigger()
 
                 # single run
-                elif self.show_params['sequence']=="ordered" and self.show_params['repeat']=='single-run' and self.top==True:
+                elif self.show_params['repeat']=='single-run' and self.top==True:
                    self.end('normal',"End of Single Run")
 
-                elif self.show_params['sequence']=="ordered" and self.show_params['repeat']=='single-run' and self.top==False:
+                elif self.show_params['repeat']=='single-run' and self.top==False:
                    self.end('do-next',"End of single run - Return from Sub Show")
 
                 # repeating and waiting to restart 
@@ -473,7 +473,7 @@ class MediaShow:
                     else:
                         self.poll_for_interval_timer=self.canvas.after(1000,self.what_next)
  
-                elif self.show_params['sequence']=="ordered" and self.show_params['repeat']=='interval' and int(self.show_params['repeat-interval'])>0:
+                elif self.show_params['repeat']=='interval' and int(self.show_params['repeat-interval'])>0:
                     self.waiting_for_interval=True
                     self.poll_for_interval_timer=self.canvas.after(1000,self.what_next) 
                     
@@ -609,6 +609,7 @@ class MediaShow:
                                                                self.pp_dir,
                                                                 self.pp_home,
                                                                 self.pp_profile)
+                print "Starting MediaShow: {0}".format(selected_track['sub-show'])
                 self.shower.play(self.show_id,self.end_shower,self.ready_callback,top=False,command=self.direction)
 
             elif selected_show['type']=="liveshow":    
