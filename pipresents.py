@@ -70,13 +70,13 @@ class PiPresents:
             Monitor.global_enable=2
         else:
             Monitor.global_enable=0
-            
+ 
         # UNCOMMENT THIS TO LOG WARNINGS AND ERRORS ONLY
         # Monitor.global_enable=1
 
         self.mon.log (self, "\n\n\n\n\n*****************\nPi Presents is starting, Version:"+self.pipresents_minorissue)
         self.mon.log (self, "Version: " + self.pipresents_minorissue)
-	self.mon.log (self," OS and separator:" + os.name +'  ' + os.sep)
+        self.mon.log (self," OS and separator:" + os.name +'  ' + os.sep)
         self.mon.log(self,"sys.path[0] -  location of code: "+sys.path[0])
         # self.mon.log(self,"os.getenv('HOME') -  user home directory (not used): " + os.getenv('HOME'))
         # self.mon.log(self,"os.path.expanduser('~') -  user home directory: " + os.path.expanduser('~'))
@@ -97,7 +97,8 @@ class PiPresents:
         #   a) the given home dir
         #   b) a 'pp_home' dir within the given home dir (original PP operation)
         if self.options['home'] =="":
-            home = os.path.expanduser('~')+ os.sep+"pp_home"
+            home    = ""
+            home_pp = os.path.expanduser('~')+ os.sep+"pp_home"
         else:
             home    = self.options['home']
             home_pp = self.options['home'] + os.sep + "pp_home"

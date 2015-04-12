@@ -27,6 +27,10 @@ class AudioPlayer:
     _ENDING   = "mplayer_ending"   # track is in the process of ending due to quit or end of track
     _WAITING  = "wait for timeout" # track has finished but timeout still running
 
+# audio mixer matrix settings
+    _LEFT = "channels=2:1:0:0:1:1"
+    _RIGHT = "channels=2:1:0:1:1:0"
+    _STEREO = "channels=2"
 
 # ***************************************
 # EXTERNAL COMMANDS

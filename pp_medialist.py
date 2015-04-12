@@ -89,6 +89,8 @@ class MediaList:
     
     def selected_track(self):
         """returns a dictionary containing all fields in the selected track """
+        if self._selected_track_index == -1:
+            self.select(0)
         return self._selected_track
 
     def select(self,index):
@@ -103,6 +105,8 @@ class MediaList:
 # Dealing with anonymous tracks for use and display
      
     def at_end(self):
+        if self._num_tracks == 1:
+            return True
         # true is selected track is last anon
         index=self._num_tracks-1
         while index>=0:
@@ -185,17 +189,23 @@ class MediaList:
                 
             end=self._selected_track_index
         else:
-            index=random.randint(0,self._num_tracks-1)
-            if index==0:
-                end=self._num_tracks-1
+            if self._num_tracks == 1:
+                index = 0
+                end = 0
             else:
-                end=index-1
+                index=random.randint(0,self._num_tracks-1)
+                if index==0:
+                    end=self._num_tracks-1
+                else:
+                    end=index-1
         #search for next anonymous track
         # print 'index', index, 'end',end
         while index<>end:
             if self._tracks[index] ['track-ref'] =="":
                 self.select(index)
                 return True
+            if self._num_tracks == 1:
+                return False
             if index== self._num_tracks-1:
                 index=0
             else:
