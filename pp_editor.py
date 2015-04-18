@@ -180,8 +180,15 @@ class PPEditor:
         # updown = track buttons
         left_frame=ttkFrame(bottom_frame, padx=5)
         left_frame.pack(side=LEFT, fill=BOTH, expand=True)
-        middle_frame=ttkFrame(bottom_frame,padx=5)
-        middle_frame.pack(side=LEFT, fill=BOTH, expand=False)
+        notebook = ttk.Notebook(left_frame)
+        shows_tab=ttkFrame(notebook)
+        medialist_tab = ttkFrame(notebook)
+        notebook.add(shows_tab, text="Shows")
+        notebook.add(medialist_tab, text="Medialists")
+        notebook.pack(side=LEFT, fill=BOTH, expand=True)
+        
+        #middle_frame=ttkFrame(bottom_frame,padx=5)
+        #middle_frame.pack(side=LEFT, fill=BOTH, expand=False)
         right_frame=ttkFrame(bottom_frame,padx=5,pady=10)
         right_frame.pack(side=LEFT, fill=BOTH, expand=True)
         updown_frame=ttkFrame(bottom_frame,padx=5)
@@ -192,31 +199,21 @@ class PPEditor:
 
         tracks_title_frame=ttkFrame(right_frame, padding=".05i")
         tracks_title_frame.pack(side=TOP, fill=X, expand=False)
-        tracks_label = ttk.Label(tracks_title_frame, text="Tracks in Selected Medialist")
-        tracks_label.configure(justify=CENTER)
-        tracks_label.pack(side=TOP, fill=X, expand=False)
+        self.tracks_label = ttk.Label(tracks_title_frame, text="Tracks in Selected Medialist")
+        self.tracks_label.configure(justify=CENTER)
+        self.tracks_label.pack(side=TOP, fill=X, expand=False)
         tracks_frame=ttkFrame(right_frame, padding=".05i")
         tracks_frame.pack(side=TOP, fill=BOTH, expand=True)
-        shows_title_frame=ttkFrame(left_frame, padding=".05i")
-        shows_title_frame.pack(side=TOP, fill=X, expand=False)
-        shows_label = ttk.Label(shows_title_frame, text="Shows")
-        shows_label.pack(side=TOP, fill=X, expand=False)
-        shows_frame=ttkFrame(left_frame, padding=".05i")
+        shows_frame=ttkFrame(shows_tab, padding=".05i")
         shows_frame.pack(side=TOP, fill=BOTH, expand=True)
-        shows_title_frame=ttkFrame(left_frame)
-        shows_title_frame.pack(side=TOP, fill=X)
-        medialists_title_frame=ttkFrame(left_frame, padding=".05i")
-        medialists_title_frame.pack(side=TOP, fill=X)
-        medialists_label = ttk.Label(medialists_title_frame, text="Medialists")
-        medialists_label.pack(side=TOP, fill=X, expand=False)
-        medialists_frame=ttkFrame(left_frame, padding=".05i")
+        medialists_frame=ttkFrame(medialist_tab, padding=".05i")
         medialists_frame.pack(side=LEFT, fill=BOTH, expand=True)
 
 # define buttons 
 
-        add_button = ttkButton(middle_frame, width = 5, height = 2, text='Edit\nShow',
+        add_button = ttkButton(shows_tab, width = 5, height = 2, text='Edit',
                               fg='black', command = self.m_edit_show, bg="light grey")
-        add_button.pack(side=RIGHT)
+        add_button.pack(side=BOTTOM)
         
         add_button = ttkButton(updown_frame, width = 5, height = 1, text='Add',
                               fg='black', command = self.add_track_from_file, bg="light grey")
@@ -658,6 +655,11 @@ class PPEditor:
                 
     def refresh_tracks_display(self):
         self.tracks_display.delete(0,self.tracks_display.size())
+        if len(self.medialists) > 0 and self.current_medialists_index >= 0:
+            medialist = self.medialists[self.current_medialists_index]
+        else:
+            medialist = "(no medialist selected)"
+        self.tracks_label['text'] = "Tracks in %s" % medialist
         if self.current_medialist<>None:
             for index in range(self.current_medialist.length()):
                 if self.current_medialist.track(index)['track-ref']<>"":
@@ -674,9 +676,11 @@ class PPEditor:
             
     def e_select_track(self,event):
         if self.current_medialist<>None and self.current_medialist.length()>0:
-            mouse_item_index=int(event.widget.curselection()[0])
-            self.current_medialist.select(mouse_item_index)
-            self.refresh_tracks_display()
+            selection = event.widget.curselection()
+            if len(selection) > 0:
+                    mouse_item_index=int(selection[0])
+                    self.current_medialist.select(mouse_item_index)
+                    self.refresh_tracks_display()
 
     def m_edit_track(self, *args, **kwargs):
         self.edit_track(PPdefinitions.track_types,PPdefinitions.track_field_specs)
