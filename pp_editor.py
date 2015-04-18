@@ -268,6 +268,7 @@ class PPEditor:
         self.tracks_display.pack(side=LEFT,fill=BOTH, expand=1)
         self.tracks_display.bind("<ButtonRelease-1>", self.e_select_track)
         self.tracks_display.bind("<Double-Button-1>", self.m_edit_track)
+        self.tracks_display.bind("<Delete>", self.remove_track)
 
 # define window sizer
         sz = ttk.Sizegrip(root_frame)
@@ -525,6 +526,17 @@ class PPEditor:
             mouse_item_index=int(event.widget.curselection()[0])
             self.current_showlist.select(mouse_item_index)
             self.highlight_shows_display()
+            selected = self.current_showlist.selected_show()
+            self.medialists_display.selection_clear()
+            if 'medialist' in selected:
+                medialist = selected['medialist']
+                if self.medialists_display <> None:
+                        self.medialists_display.select(medialist)
+                self.select_medialist(None)
+            else:
+                self.current_medialists_index = -1
+                self.current_medialist = None
+                self.refresh_tracks_display()
 
     def copy_show(self):
         if  self.current_showlist<>None and self.current_showlist.show_is_selected():
@@ -609,15 +621,18 @@ class PPEditor:
         """
         user clicks on a medialst in a profile so try and select it.
         """
+        self.current_medialists_index = -1
+        self.current_medialist = None
         # needs forgiving int for possible tkinter upgrade
         if len(self.medialists)>0:
-            self.current_medialists_index=int(event.widget.curselection()[0])
-            self.current_medialist=MediaList('ordered')
-            if not self.current_medialist.open_list(self.pp_profile_dir+ os.sep + self.medialists[self.current_medialists_index],self.current_showlist.sissue()):
-                self.mon.err(self,"medialist is a different version to showlist: "+ self.medialists[self.current_medialists_index])
-                self.app_exit()        
-            self.refresh_tracks_display()
-            self.refresh_medialists_display()
+            if len(self.medialists_display.curselection()) > 0:
+                self.current_medialists_index=int(self.medialists_display.curselection()[0])
+                self.current_medialist=MediaList('ordered')
+                if not self.current_medialist.open_list(self.pp_profile_dir+ os.sep + self.medialists[self.current_medialists_index],self.current_showlist.sissue()):
+                    self.mon.err(self,"medialist is a different version to showlist: "+ self.medialists[self.current_medialists_index])
+                    self.app_exit()        
+                self.refresh_tracks_display()
+                self.refresh_medialists_display()
 
 
     def refresh_medialists_display(self):
@@ -653,9 +668,9 @@ class PPEditor:
             self.highlight_tracks_display()
 
     def highlight_tracks_display(self):
-            if self.current_medialist.track_is_selected():
-                self.tracks_display.itemconfig(self.current_medialist.selected_track_index(),fg='red')            
-                self.tracks_display.see(self.current_medialist.selected_track_index())
+        if self.current_medialist.track_is_selected():
+            self.tracks_display.itemconfig(self.current_medialist.selected_track_index(),fg='red')            
+            self.tracks_display.see(self.current_medialist.selected_track_index())
             
     def e_select_track(self,event):
         if self.current_medialist<>None and self.current_medialist.length()>0:
@@ -902,7 +917,7 @@ class Edit1Dialog(ttkSimpleDialog.Dialog):
     def __init__(self, parent, title, label, default):
         #save the extra args to instance variables
         self.label_1 = label
-        self.default_1 = default     
+        self.default_1 = default 
         #and call the base class _init_which uses the args in body
         ttkSimpleDialog.Dialog.__init__(self, parent, title)
 

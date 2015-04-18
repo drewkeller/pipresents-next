@@ -63,9 +63,32 @@ class ttkListbox(ttk.Treeview):
 		children = ttk.Treeview.get_children(self)
 		return len(children)
 
-	def select(self, index):
-		item = self.get_children()[index]
-		return self.selection(selop=selection_set, items=item)
+	def select(self, selector):
+	        index = None
+	        if isinstance(selector, int):
+	                index = selector
+        	elif isinstance(selector, str) or isinstance(selector, unicode):
+        	        index = self.indexof(selector)
+	        if index != None:
+        		item = self.get_children()[index]
+        		self.see(index)
+		        return self.selection_set(item)
+	        else:
+	                return None
+		
+	def indexof(self, text):
+	        index = -1
+	        items = self.get_children(None)
+	        i = 0
+	        for thisitem in items:
+	                if self.item(thisitem)["text"] == text:
+	                        index = i
+       	                i += 1
+	        return index
+	        
+	def selection_clear(self):
+	        items = self.selection()
+	        return self.selection_remove(items)
 
 	def curselection(self):
 		items = self.selection()
