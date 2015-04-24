@@ -88,7 +88,7 @@ class PPdefinitions:
               
                 'start':[
                     'tab-show','sep',  
-                        'type','title','show-ref','start-show'
+                        'type','title','show-ref','start-show', 'plugin'
                     ]
              }
 
@@ -144,7 +144,7 @@ class PPdefinitions:
                         'omx-audio': 'hdmi','omx-volume':'0','omx-window':'original','omx-other-options': '','web-window':'warp',
                         'controls':''},
             
-                'start':{'title': 'Start','show-ref':'start', 'type': 'start','start-show':''}  
+                'start':{'title': 'Start','show-ref':'start', 'type': 'start','start-show':'', 'plugin':''}  
             }
     
     show_field_specs={
@@ -220,7 +220,7 @@ class PPdefinitions:
                     'omx-other-options':{'param':'omx-other-options','shape':'entry','text':'Video Player Options','must':'no','read-only':'no'},
                     'omx-volume':{'param':'omx-volume','shape':'entry','text':'Video Player Volume','must':'no','read-only':'no'},
                     'omx-window':{'param':'omx-window','shape':'entry','text':'Video Window','must':'no','read-only':'no'},
-
+                    'plugin':{'param':'plugin','shape':'browse','text':'Plugin Config File','must':'no','read-only':'no'},
 
                     'progress':{'param':'progress','shape':'option-menu','text':'Progress','must':'no','read-only':'no',
                                         'values':['auto','manual']},

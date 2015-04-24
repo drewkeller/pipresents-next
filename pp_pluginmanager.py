@@ -32,7 +32,6 @@ class PluginManager:
  
     # called by players to execute a plugin
     def do_plugin(self,track_file,plugin_cfg):
-
         # checks existence of and reads the plugin config file
         plugin_cfg_file= self.complete_path(plugin_cfg)
         if not os.path.exists(plugin_cfg_file):
@@ -90,6 +89,6 @@ class PluginManager:
 
     def complete_path(self,track_file):
         #  complete path of the filename of the selected entry
-        if track_file[0]=="+":
+        if len(track_file) > 0 and track_file[0]=="+":
                 track_file=self.pp_home+track_file[1:]
         return track_file     

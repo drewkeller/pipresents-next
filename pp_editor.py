@@ -197,16 +197,17 @@ class PPEditor:
         #ttk.Style().configure("TFrame", background="green")
         #ttk.Style().configure("TButton", background="red")
 
-        tracks_title_frame=ttkFrame(right_frame, padding=".05i")
+        tracks_title_frame=ttkFrame(right_frame, padding=4)
         tracks_title_frame.pack(side=TOP, fill=X, expand=False)
         self.tracks_label = ttk.Label(tracks_title_frame, text="Tracks in Selected Medialist")
         self.tracks_label.configure(justify=CENTER)
         self.tracks_label.pack(side=TOP, fill=X, expand=False)
-        tracks_frame=ttkFrame(right_frame, padding=".05i")
+        tracks_frame=ttkFrame(right_frame, padding=0)
         tracks_frame.pack(side=TOP, fill=BOTH, expand=True)
-        shows_frame=ttkFrame(shows_tab, padding=".05i")
+        
+        shows_frame=ttkFrame(shows_tab, padding=0)
         shows_frame.pack(side=TOP, fill=BOTH, expand=True)
-        medialists_frame=ttkFrame(medialist_tab, padding=".05i")
+        medialists_frame=ttkFrame(medialist_tab, padding=0)
         medialists_frame.pack(side=LEFT, fill=BOTH, expand=True)
 
 # define buttons 
@@ -544,7 +545,11 @@ class PPEditor:
 
     def edit_show(self,show_types,field_specs):
         if self.current_showlist<>None and self.current_showlist.show_is_selected():
-            d=EditItem(self.root,"Edit Show",self.current_showlist.selected_show(),show_types,field_specs,self.show_refs(),
+            field_content = self.current_showlist.selected_show()
+            # auto-upgrade show to include plugin so it appears in editor box
+            if not 'plugin' in field_content:
+                field_content['plugin'] = ''
+            d=EditItem(self.root,"Edit Show",field_content,show_types,field_specs,self.show_refs(),
                        self.initial_media_dir,self.pp_home_dir,'show')
             if d.result == True:
                 self.save_showlist(self.pp_profile_dir)

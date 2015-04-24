@@ -2,6 +2,7 @@ import os
 import sys
 import copy
 from pp_utils import Monitor
+from pp_pluginmanager import PluginManager
 
 class ShowManager:
     
@@ -30,6 +31,10 @@ class ShowManager:
         self.pp_profile=pp_profile
         self.pp_home=pp_home
         self.show_id=show_id
+
+	if not 'plugin' in self.show_params:
+		self.show_params['plugin'] = ''
+        self.pim=PluginManager(self.show_id,self.root,self.canvas,self.show_params,None,self.pp_dir,self.pp_home,self.pp_profile) 
 
         self.mon=Monitor()
         self.mon.on()
@@ -108,6 +113,7 @@ class ShowManager:
             fields[0]=show_ref
             fields[1]='start'
             reason,message=self.control_a_show(fields)
+            self.pim.do_plugin(None, self.show_params['plugin'])
             if reason<>'normal':
                 return reason,message
         #no shows started
@@ -155,6 +161,7 @@ class ShowManager:
             
 
     def stop_all_shows(self):
+        self.pim.stop_plugin()
         for show in ShowManager.shows:
             self.stop_show(show[ShowManager.SHOW_REF])
         return 'normal','stopped all shows'

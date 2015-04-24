@@ -49,8 +49,8 @@ class FontChooser( ttkSimpleDialog.Dialog ):
     def body( self, master ):
         theRow = 0
 
-        ttkLabel( master, text="Font Family", anchor=W ).grid( row=theRow, column=0, sticky=W )
-        ttkLabel( master, text="Font Size", anchor=W ).grid( row=theRow, column=2, sticky=W )
+        ttkLabel( master, text="Font Family" ).grid( row=theRow, column=0 )
+        ttkLabel( master, text="Font Size" ).grid( row=theRow, column=2 )
 
         theRow += 1
 
@@ -176,7 +176,7 @@ TabBar - The tab bar that is placed above tab bodies (Tabs), based on ttk.Notebo
 # a base tab class
 class Tab(ttkFrame):
     def __init__(self, master, name):
-        ttkFrame.__init__(self, master, padding=8)
+        ttkFrame.__init__(self, master)
         self.tab_name = name
 
 # the bulk of the logic is in the actual tab bar
@@ -187,7 +187,7 @@ class TabBar(ttk.Notebook):
         self.tabnames = {}
     
     def show(self):
-        self.pack(side=TOP, expand=YES, fill=BOTH)
+        self.pack(side=TOP, expand=YES, fill=X)
 
     def add(self, tab,text):
         self.tabnames[tab.tab_name] = tab   # add it to the list of tabs
@@ -292,7 +292,7 @@ class EditItem(ttkSimpleDialog.Dialog):
                     bg='white'
                     
                 #write the label
-                ttkLabel(self.current_tab,text=field_spec['text'], anchor=W).grid(row=self.tab_row,column=0,padx=10,pady=3,sticky=W)
+                ttkLabel(self.current_tab,text=field_spec['text'], anchor=W).grid(row=self.tab_row,column=0,sticky=W)
                 
                 # make the editable field
                 if field_spec['shape']in ('entry','colour','browse','font'):
@@ -304,7 +304,7 @@ class EditItem(ttkSimpleDialog.Dialog):
                     obj.insert(END,self.field_content[field_spec['param']])
                     
                 elif field_spec['shape']=='spinbox':
-                    obj=ttkCombobox( master, textvariable=self._family )
+                    obj=ttk.Combobox( master,  height=10, textvariable=self._family )
                     obj.grid( row=theRow, column=0, columnspan=2, sticky=N+S+E+W, padx=10 )
                     #obj=Spinbox(self.current_tab,bg=bg,values=values,wrap=True)
                     obj.insert(END,self.field_content[field_spec['param']])
@@ -322,13 +322,10 @@ class EditItem(ttkSimpleDialog.Dialog):
                     self.mon.log(self,"Uknown shape for: " + parameter)
                     return None
                 
-                if field_spec['read-only']=='yes':
-                    obj.config(state="readonly") #,bg='dark grey')
+                #if field_spec['read-only']=='yes':
                 #    obj.config(state="readonly",bg='dark grey')
-                if field_spec['shape'] == 'text':
-                    obj.grid(row=self.tab_row,column=1,sticky=E+W, pady=3, padx=5)
-                else:
-                    obj.grid(row=self.tab_row,column=1,sticky=N+E+W+S, pady=3, padx=5)
+                    
+                obj.grid(row=self.tab_row,column=1,sticky=W)
 
                 #display buttons where required
                 if field_spec['shape']=='browse':
@@ -358,17 +355,16 @@ class EditItem(ttkSimpleDialog.Dialog):
         for field in record_fields:
             # get the details of this field
             field_spec=self.field_specs[field]
-            if len(self.entries) <= entry_index:
-                continue
             
             # and get the value
             if field_spec['shape']not in ('sep','tab'):
                 # print field_spec['param']
                 
                 if field_spec['shape']=='text':
-                    self.field_content[field_spec['param']]=self.fields[field_index].get(1.0,END).rstrip('\n')
+                    value = self.fields[field_index].get(1.0,END).rstrip('\n')
+                    self.field_content[field_spec['param']] = value
                     
-                elif field_spec['shape']=='option-menu':
+                elif field_spec['shape']=='option-menu' and len(self.entries) > entry_index:
                     self.field_content[field_spec['param']]=self.entries[entry_index].get()
                     entry_index+=1
                 else:
