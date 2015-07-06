@@ -121,8 +121,8 @@ class OMXDriver(object):
 
         # uncomment to monitor output to and input from omxplayer.bin (read pexpect manual)
         fout= file('omxlogfile.txt','w')  #uncomment and change sys.stdout to fout to log to a file
-        # self._process.logfile_send = sys.stdout  # send just commands to stdout
-        self._process.logfile=fout  # send all communications to log file
+        self._process.logfile_send = sys.stdout  # send just commands to stdout
+        # self._process.logfile=fout  # send all communications to log file
 
         if pause_before_play:
             self._process.send('p')

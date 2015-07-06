@@ -13,6 +13,7 @@ import copy
 import traceback
 from subprocess import call
 import time
+from subprocess import Popen, PIPE
 
 from Tkinter import *
 import Tkinter as tk
@@ -198,7 +199,8 @@ class PiPresents:
         if self.options['fullscreen']==True:
 
             self.root.attributes('-fullscreen', True)
-            os.system('unclutter &')
+            #os.system('unclutter >/dev/null 2>&1 &') # suppress complaints 'someone created subwindow'
+            Popen(['unclutter'], stdout=PIPE, stderr=PIPE)
             self.window_width=self.screen_width
             self.window_height=self.screen_height
             self.window_x=0
