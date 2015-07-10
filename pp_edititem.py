@@ -360,14 +360,14 @@ class EditItem(ttkSimpleDialog.Dialog):
             if field_spec['shape']not in ('sep','tab'):
                 # print field_spec['param']
                 
-                if field_spec['shape']=='text':
+                if field_spec['shape']=='text' and len(self.fields) > field_index:
                     value = self.fields[field_index].get(1.0,END).rstrip('\n')
                     self.field_content[field_spec['param']] = value
                     
                 elif field_spec['shape']=='option-menu' and len(self.entries) > entry_index:
                     self.field_content[field_spec['param']]=self.entries[entry_index].get()
                     entry_index+=1
-                else:
+                elif len(self.fields) > field_index:
                     self.field_content[field_spec['param']]=self.fields[field_index].get().strip()
                     
                 field_index +=1
