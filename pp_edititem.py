@@ -312,9 +312,7 @@ class EditItem(ttkSimpleDialog.Dialog):
                 elif field_spec['shape']=='option-menu': 
                     self.option_val = StringVar(self.current_tab)    
                     self.option_val.set(self.field_content[field_spec['param']])
-                    #obj = apply(OptionMenu, [self.current_tab, self.option_val] + values)
                     obj = ttkCombobox(self.current_tab, textvariable=self.option_val)
-                    self.apply()
                     obj['values'] = values
                     self.entries.append(self.option_val)
                     
@@ -360,11 +358,11 @@ class EditItem(ttkSimpleDialog.Dialog):
             if field_spec['shape']not in ('sep','tab'):
                 # print field_spec['param']
                 
-                if field_spec['shape']=='text' and len(self.fields) > field_index:
+                if field_spec['shape']=='text':
                     value = self.fields[field_index].get(1.0,END).rstrip('\n')
                     self.field_content[field_spec['param']] = value
                     
-                elif field_spec['shape']=='option-menu' and len(self.entries) > entry_index:
+                elif field_spec['shape']=='option-menu':
                     self.field_content[field_spec['param']]=self.entries[entry_index].get()
                     entry_index+=1
                 elif len(self.fields) > field_index:
