@@ -286,21 +286,17 @@ class EditItem(ttkSimpleDialog.Dialog):
                 self.mon.log(self,"Value for field not found in opened file: " + parameter)
                 return None
             else:
-                if field_spec['must']=='yes':
-                    bg='pink'
-                else:
-                    bg='white'
                     
                 #write the label
                 ttkLabel(self.current_tab,text=field_spec['text'], anchor=W).grid(row=self.tab_row,column=0,sticky=W)
                 
                 # make the editable field
                 if field_spec['shape']in ('entry','colour','browse','font'):
-                    obj=ttkEntry(self.current_tab,bg=bg,width=40,font='arial 11')
+                    obj=ttkEntry(self.current_tab,width=40,font='arial 11')
                     obj.insert(END,self.field_content[field_spec['param']])
                     
                 elif field_spec['shape']=='text':
-                    obj=ScrolledText(self.current_tab,bg=bg,height=8,width=40,font='arial 11')
+                    obj=ScrolledText(self.current_tab,height=8,width=40,font='arial 11')
                     obj.insert(END,self.field_content[field_spec['param']])
                     
                 elif field_spec['shape']=='spinbox':
@@ -320,8 +316,16 @@ class EditItem(ttkSimpleDialog.Dialog):
                     self.mon.log(self,"Uknown shape for: " + parameter)
                     return None
                 
-                #if field_spec['read-only']=='yes':
-                #    obj.config(state="readonly",bg='dark grey')
+                # Read-only items
+                if field_spec['read-only']=='yes':
+                    obj.config(state=DISABLED)
+
+                # Required-entry items
+                if field_spec['must']=='yes':
+                    print "Found 'must' in {0}".format(field)
+                    obj.configure(background='lemon chiffon') # reserve pink for validation errors (future)?
+                else:
+                    obj.configure(background='white')
                     
                 obj.grid(row=self.tab_row,column=1,sticky=W)
 
