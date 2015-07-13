@@ -754,12 +754,16 @@ class PPEditor:
     def new_child_show_track(self):
         self.new_track(PPdefinitions.new_tracks['child-show'],None)
 
-    def remove_track(self):
+    def remove_track(self, event=None):
         if  self.current_medialist<>None and self.current_medialist.length()>0 and self.current_medialist.track_is_selected():
             if tkMessageBox.askokcancel("Delete Track","Delete Track"):
                 index= self.current_medialist.selected_track_index()
                 self.current_medialist.remove(index)
                 self.save_medialist()
+                ' highlight the next (or previous) item in the list
+                if index >= self.current_medialist.length():
+                    index = self.current_medialist.length() - 1
+                self.current_medialist.select(index)
                 self.refresh_tracks_display()
                 
     def add_track_from_file(self):
