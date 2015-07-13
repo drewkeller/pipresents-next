@@ -82,6 +82,8 @@ class MediaList:
                 return False
             
     def selected_track_index(self):
+        if self._selected_track_index == -1:
+            self.select(0)
         return self._selected_track_index
 
     def track(self,index):
