@@ -8,9 +8,16 @@ from pp_options import command_options
 
 pp_home    = ""
 pp_profile = ""
-mon        = Monitor()
 pp_dir     = sys.path[0]
-self       = type('pp_paths', (object,), {})() # for monitor to report what we are
+mon        = None
+
+def guard_monitor():
+    global mon
+    global self
+    if not mon is None:
+        return
+    mon  = Monitor()
+    self = type('pp_paths', (object,), {})() # for monitor to report what we are
 
 def get_home(home_option):
     # get directory containing pp_home from the command,
@@ -18,8 +25,8 @@ def get_home(home_option):
     # if a home dir is given, try:
     #   a) the given home dir
     #   b) a 'pp_home' dir within the given home dir (original PP operation)
-    global pp_home
-    
+    guard_monitor()
+
     if not home_option:
         options = command_options()
         home_option = options['home']
@@ -64,6 +71,7 @@ def get_profile_dir(home, profile_option):
     # returns the full path to the directory that contains (or will contain)
     # pp_showlist.json and other files for the profile
     # if the directory doesn't exist, returns None
+    guard_monitor()
     if profile_option != '':
         name = profile_option
     else:

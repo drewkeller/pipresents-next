@@ -14,6 +14,7 @@ import shutil
 import json
 import copy
 import string
+import pp_paths
 
 from pp_edititem import EditItem
 from pp_medialist import MediaList
@@ -300,7 +301,25 @@ class PPEditor:
 
     def init(self):
         self.options.read()
-        self.pp_home_dir = self.options.pp_home_dir
+        # get home path from -o option (kept separate from self.options.pp_home_dir)
+        # or fall back to self.options.pp_home_dir
+        if self.command_options['home'] != '':
+            self.pp_home_dir = pp_paths.get_home(self.command_options['home'])
+            if self.pp_home_dir is None:
+                self.end('error','Failed to find pp_home')
+        else:
+            self.pp_home_dir = self.options.pp_home_dir
+
+        # get profile path from -p option
+        # pp_profile_dir is the full path to the directory that contains 
+        # pp_showlist.json and other files for the profile
+        if self.command_options['profile'] != '':
+            self.pp_profile_dir = pp_paths.get_profile_dir(self.pp_home_dir, self.command_options['profile'])
+            if self.pp_profile_dir is None:
+                self.end('error','Failed to find profile')
+        else:
+            self.pp_profile_dir=''
+
         self.initial_media_dir = self.options.initial_media_dir
         self.mon.log(self,"Data Home from options is "+self.pp_home_dir)
         self.mon.log(self,"Initial Media from options is "+self.initial_media_dir)
@@ -310,6 +329,9 @@ class PPEditor:
         self.shows_display.delete(0,END)
         self.medialists_display.delete(0,END)
         self.tracks_display.delete(0,END)
+        # if we were given a profile on the command line, open it
+        if self.command_options['profile'] != '':
+            self.open_profile(self.pp_profile_dir)
 
 
 
@@ -760,7 +782,7 @@ class PPEditor:
                 index= self.current_medialist.selected_track_index()
                 self.current_medialist.remove(index)
                 self.save_medialist()
-                ' highlight the next (or previous) item in the list
+                # highlight the next (or previous) item in the list
                 if index >= self.current_medialist.length():
                     index = self.current_medialist.length() - 1
                 self.current_medialist.select(index)

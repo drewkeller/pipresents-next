@@ -37,5 +37,7 @@ def ed_options():
     parser.add_argument( '--forceupdate', 
                                           action='store_true',
                                           help='Force Update')
+    parser.add_argument( '-o','--home', nargs='?', default='', const='',help='Path to pp_home')
+    parser.add_argument( '-p','--profile', nargs='?', default='', const='',help='Profile')
     args=parser.parse_args()
     return  vars(args)
