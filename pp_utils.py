@@ -55,7 +55,7 @@ class Monitor:
         self.enable=False
 
     def err(self,caller,text):
-        print "%.2f" % (time.time()-Monitor.start_time), " ERROR: ",caller.__class__.__name__," ", text
+        print "[err]  %.2f" % (time.time()-Monitor.start_time), " ERROR: ",caller.__class__.__name__," ", text
         Monitor.ofile.write (" ERROR: " + caller.__class__.__name__ + ":  " + text + "\n")
         tkMessageBox.showwarning(
                                 caller.__class__.__name__ ,
@@ -64,13 +64,13 @@ class Monitor:
                                         
     def warn(self,caller,text):
         if Monitor.global_enable >0 and self.enable:
-            print "%.2f" % (time.time()-Monitor.start_time), " WARNING: ",caller.__class__.__name__," ", text
+            print "[warn] %.2f" % (time.time()-Monitor.start_time), " WARNING: ",caller.__class__.__name__," ", text
             Monitor.ofile.write (" WARNING: " + caller.__class__.__name__ + ":  " + text + "\n")
 
 
     def log(self,caller,text):
         if Monitor.global_enable >1  and self.enable:
-             print "%.2f" % (time.time()-Monitor.start_time), " ",caller.__class__.__name__," ", text
+             print "[log] %.2f" % (time.time()-Monitor.start_time), " ",caller.__class__.__name__," ", text
              Monitor.ofile.write (str(time.time()-Monitor.start_time) + " " + caller.__class__.__name__ +": " + text+"\n")
              
   
