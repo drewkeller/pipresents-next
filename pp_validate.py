@@ -10,6 +10,9 @@ import json
 
 class Validator:
 
+    def get_results(self):
+        return self.result.errors, self.result.warnings
+
     def validate_profile(self, root, pp_dir, pp_home, pp_profile,editor_issue,display):
 
         # USES
@@ -110,7 +113,7 @@ class Validator:
                             track_file=track['location']
                             if track_file.strip()<>'' and  track_file[0]=="+":
                                     track_file=pp_home+track_file[1:]
-                                    if not os.path.exists(track_file): self.result.display('f',"location "+track['location']+ " media file not found")
+                            if not os.path.exists(track_file): self.result.display('f',"location "+track['location']+ " media file not found")
 
                         if track['type'] in ('video','audio','message','image','web'):
                             # check common fields
@@ -123,7 +126,7 @@ class Validator:
                                 track_file=track['background-image']
                                 if track_file[0]=="+":
                                     track_file=pp_home+track_file[1:]
-                                    if not os.path.exists(track_file): self.result.display('f',"background-image "+track['background-image']+ " background image file not found")                                
+                                if not os.path.exists(track_file): self.result.display('f',"background-image "+track['background-image']+ " background image file not found")                                
 
                             
                         # Check simple fields                        

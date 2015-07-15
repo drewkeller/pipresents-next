@@ -4,6 +4,7 @@ from Tkinter import *
 import ttk
 import Tkinter as tk
 import tkFileDialog
+from ttkStatusBar import StatusBar
 import tkMessageBox
 import ttkSimpleDialog as ttkSimpleDialog
 import tkFont
@@ -95,7 +96,7 @@ class PPEditor:
 
         profilemenu = Menu(menubar, tearoff=0, bg="grey", fg="black")
         profilemenu.add_command(label='Open', command = self.open_existing_profile)
-        profilemenu.add_command(label='Validate', command = self.validate_profile)
+        profilemenu.add_command(label='Validate', command = self.e_validate_profile)
         menubar.add_cascade(label='Profile', menu = profilemenu)
 
         ptypemenu = Menu(profilemenu, tearoff=0, bg="grey", fg="black")
@@ -275,6 +276,10 @@ class PPEditor:
         root_frame.columnconfigure(0, weight=1)
         root_frame.rowconfigure(0, weight=1)
 
+# define status bar
+        self.status = StatusBar(root_frame)
+        self.status.pack(side=BOTTOM, fill=X)
+        
 # initialise editor options class
         self.options=Options(self.pp_dir) #creates options file in code directory if necessary
         
@@ -355,10 +360,27 @@ class PPEditor:
                    +"For profile version: " + self.editor_issue + "\nAuthor: Ken Thompson"+
                               "\nWebsite: http://pipresents.wordpress.com/")
 
-    def validate_profile(self):
-        val =Validator()
-        val.validate_profile(self.root,self.pp_dir,self.pp_home_dir,self.pp_profile_dir,self.editor_issue,True)
+    def e_validate_profile(self):
+        self.validate_profile(True)
 
+    def validate_profile(self, show_results=False):
+        val =Validator()
+        self.status.set("{0}", "Validating...")
+        val.validate_profile(self.root,self.pp_dir,self.pp_home_dir,
+            self.pp_profile_dir,self.editor_issue,show_results)
+        errors, warnings = val.get_results()
+        if errors == 1: error_text = "1 error"
+        else:           error_text = "{0} errors".format(errors)
+        if warnings == 1: warn_text = "1 warning"
+        else:             warn_text = "{0} warnings".format(warnings)
+        if errors > 0:
+            self.status.set_error("{0}, {1}", error_text, warn_text)
+        elif warnings > 0:
+            self.status.set_warning("{0}, {1}", error_text, warn_text)
+            #tkMessageBox.showwarning("Validator","Errors were found in the profile. Run the validator for details")
+            #self.status.set("! {0} errors, {1} warnings. Run validation for details.", errors, warnings, background='red')
+        else:
+            self.status.set_info("{0}, {1}", error_text, warn_text)
 
     
 # **************
@@ -388,6 +410,7 @@ class PPEditor:
             return
         self.open_medialists(self.pp_profile_dir)
         self.refresh_tracks_display()
+        #self.validate_profile()
 
 
     def new_profile(self,profile):
@@ -469,6 +492,7 @@ class PPEditor:
         if self.current_showlist<>None:
             showlist_file = dir + os.sep + "pp_showlist.json"
             self.current_showlist.save_list(showlist_file)
+            #self.validate_profile()
             
     def add_eventshow(self):
         self.add_show(PPdefinitions.new_shows['eventshow'])
@@ -541,6 +565,7 @@ class PPEditor:
         for index in range(self.current_showlist.length()):
             self.shows_display.insert(END, self.current_showlist.show(index)['title']+"   ["+self.current_showlist.show(index)['show-ref']+"]")        
         self.highlight_shows_display()
+        self.validate_profile()
 
     def highlight_shows_display(self):
         if self.current_showlist.show_is_selected():
@@ -701,6 +726,7 @@ class PPEditor:
                     track_ref_string=""
                 self.tracks_display.insert(END, self.current_medialist.track(index)['title']+track_ref_string)        
             self.highlight_tracks_display()
+        self.validate_profile()
 
     def highlight_tracks_display(self):
         if self.current_medialist.track_is_selected():
@@ -724,6 +750,7 @@ class PPEditor:
                        self.initial_media_dir,self.pp_home_dir,'track')
             if d.result == True:
                 self.save_medialist()
+                #self.validate_profile()
             self.highlight_tracks_display()
 
     def move_track_up(self):
