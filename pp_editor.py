@@ -278,6 +278,7 @@ class PPEditor:
 
 # define status bar
         self.status = StatusBar(root_frame)
+        self.status.bind("<Double-Button-1>", self.e_validate_profile)
         self.status.pack(side=BOTTOM, fill=X)
         
 # initialise editor options class
@@ -360,7 +361,7 @@ class PPEditor:
                    +"For profile version: " + self.editor_issue + "\nAuthor: Ken Thompson"+
                               "\nWebsite: http://pipresents.wordpress.com/")
 
-    def e_validate_profile(self):
+    def e_validate_profile(self, event=None):
         self.validate_profile(True)
 
     def validate_profile(self, show_results=False):
@@ -374,13 +375,13 @@ class PPEditor:
         if warnings == 1: warn_text = "1 warning"
         else:             warn_text = "{0} warnings".format(warnings)
         if errors > 0:
-            self.status.set_error("{0}, {1}", error_text, warn_text)
+            self.status.set_error("{0}, {1}. Double click for details.", error_text, warn_text)
         elif warnings > 0:
-            self.status.set_warning("{0}, {1}", error_text, warn_text)
+            self.status.set_warning("{0}, {1}. Double click for details.", error_text, warn_text)
             #tkMessageBox.showwarning("Validator","Errors were found in the profile. Run the validator for details")
             #self.status.set("! {0} errors, {1} warnings. Run validation for details.", errors, warnings, background='red')
         else:
-            self.status.set_info("{0}, {1}", error_text, warn_text)
+            self.status.set_info("{0}, {1}.", error_text, warn_text)
 
     
 # **************

@@ -11,6 +11,9 @@ class StatusBar(ttk.Frame):
         self.label.pack(fill=X)
         self.defaultbackground = ttk.Style().lookup('TLabel', 'background')
 
+    def bind(self, sequence=None, func=None, add=None):
+        self.label.bind(sequence, func, add)
+
     def set(self, format, *args, **kwargs):
         self.label.config(kwargs, text=format.format(*args))
         self.label.update_idletasks()
