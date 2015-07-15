@@ -860,7 +860,11 @@ class ResultWindow:
         self.textb.config(state=NORMAL)
         self.textb.delete(1.0, END)
         self.textb.config(state=DISABLED)
+        top.bind("<Escape>", self.escape_keypressed)
+        self.top = top
 
+    def escape_keypressed(self, event=None):
+        self.top.destroy()
 
     def display(self,priority,text):
         if priority=='f':   self.errors+=1
