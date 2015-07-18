@@ -645,7 +645,9 @@ class PPEditor:
 
     def open_medialists(self,dir):
         self.medialists = []
-        for file in os.listdir(dir):
+        files = os.listdir(dir)
+        if files: files.sort()
+        for file in files:
             if file.endswith(".json") and file<>'pp_showlist.json':
                 self.medialists = self.medialists + [file]
         self.medialists_display.delete(0,self.medialists_display.size())
@@ -898,7 +900,9 @@ class PPEditor:
             image_list=image_spec[1:]
             for ext in image_list:
                 exts.append(copy.deepcopy(ext))
-        for file in os.listdir(directory):
+        files = os.listdir(directory)
+        if files: files.sort()
+        for file in files:
             (root_file,ext_file)= os.path.splitext(file)
             if ext_file.lower() in exts:
                 file_path=directory+os.sep+file
@@ -941,7 +945,9 @@ class PPEditor:
 
     def update_all(self):
         self.init()
-        for profile_file in os.listdir(self.pp_home_dir+os.sep+'pp_profiles'):
+        files = os.listdir(self.pp_home_dir+os.sep+'pp_profiles')
+        if files: files.sort()
+        for profile_file in files:
             # self.mon.log (self,"Updating "+profile_file)
             self.pp_profile_dir = self.pp_home_dir+os.sep+'pp_profiles'+ os.sep + profile_file
             if not os.path.exists(self.pp_profile_dir+os.sep+"pp_showlist.json"):
@@ -976,7 +982,9 @@ class PPEditor:
 
         
         # UPDATE MEDIALISTS AND THEIR TRACKS
-        for file in os.listdir(self.pp_profile_dir):
+        files = os.listdir(self.pp_profile_dir)
+        if files: files.sort()
+        for file in files:
             if file.endswith(".json") and file<>'pp_showlist.json':
                 # self.mon.log (self,"Updating medialist " + file)
                 #open a medialist and update its tracks
@@ -1139,6 +1147,8 @@ class OptionsDialog(ttkSimpleDialog.Dialog):
         self.e_autovalidate = ttk.Checkbutton(master, text="Auto validate", variable = self.autovalidate,
             onvalue="true", offvalue="false")
         self.e_autovalidate.grid(row=41, sticky=W)
+        #ttk.Label(master, text="Auto-validate:").grid(row=41, column=1, sticky=W)
+        #if config.getboolean('config', 'autovalidate'):
         self.autovalidate.set(config.get('config', 'autovalidate'))
 
         return None    # no initial focus

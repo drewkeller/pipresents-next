@@ -58,7 +58,9 @@ class Validator:
 
             # CHECK ALL MEDIALISTS AND THEIR TRACKS
             v_media_lists = []
-            for file in os.listdir(pp_profile):
+            files = os.listdir(pp_profile)
+            if files: files.sort()
+            for file in files:
                 if not file.endswith(".json") and file not in ('gpio.cfg','controls.cfg','screen.cfg','keys.cfg','resources.cfg'):
                     self.result.display('f',"Invalid medialist in profile: "+ file)
                     self.result.display('t', "Validation Aborted")
