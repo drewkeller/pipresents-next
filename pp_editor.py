@@ -279,7 +279,8 @@ class PPEditor:
 
 # define status bar
         self.status = StatusBar(root_frame)
-        self.status.bind("<Double-Button-1>", self.e_validate_profile)
+        self.status.bind("<Button-1>", self.e_validate_profile)
+        self.status.bind("<Double-Button-1>", self.e_validate_profile_with_results)
         self.status.pack(side=BOTTOM, fill=X)
         
 # initialise editor options class
@@ -348,7 +349,7 @@ class PPEditor:
 
     def edit_options(self):
         """edit the options then read them from file"""
-        eo = OptionsDialog(self.root, self.options.options_file,'Edit Options')
+        eo = OptionsDialog(self.root, self.options, 'Edit Options')
         if eo.result==True: self.init()
 
 
@@ -363,6 +364,9 @@ class PPEditor:
                               "\nWebsite: http://pipresents.wordpress.com/")
 
     def e_validate_profile(self, event=None):
+        self.validate_profile(False)
+
+    def e_validate_profile_with_results(self, event=None):
         self.validate_profile(True)
 
     def validate_profile(self, show_results=False):
@@ -593,7 +597,7 @@ class PPEditor:
         for index in range(self.current_showlist.length()):
             self.shows_display.insert(END, self.current_showlist.show(index)['title']+"   ["+self.current_showlist.show(index)['show-ref']+"]")        
         self.highlight_shows_display()
-        self.validate_profile()
+        if self.options.autovalidate: self.validate_profile()
 
     def highlight_shows_display(self):
         if self.current_showlist.show_is_selected():
@@ -774,7 +778,7 @@ class PPEditor:
                     track_ref_string=""
                 self.tracks_display.insert(END, self.current_medialist.track(index)['title']+track_ref_string)        
             self.highlight_tracks_display()
-        self.validate_profile()
+        if self.options.autovalidate: self.validate_profile()
 
     def highlight_tracks_display(self):
         #if self.current_medialist.track_is_selected():
@@ -1068,33 +1072,31 @@ class Options:
         self.initial_media_dir =""   #initial directory for open playlist      
         self.debug = False  # print debug information to terminal
 
-
+        user_home_dir = os.path.expanduser('~')
+        self.defaults = {
+            'home': user_home_dir+os.sep+'pp_home',
+            'media': user_home_dir,
+            'autovalidate': 'false'
+            }
     # create an options file if necessary
         self.options_file = app_dir+os.sep+'pp_editor.cfg'
         if not os.path.exists(self.options_file):
             self.create()
-
-
     
     def read(self):
         """reads options from options file to interface"""
-        config=ConfigParser.ConfigParser()
+        config=ConfigParser.ConfigParser(self.defaults)
         config.read(self.options_file)
-        
         self.pp_home_dir =config.get('config','home',0)
-        self.initial_media_dir =config.get('config','media',0)    
+        self.initial_media_dir =config.get('config','media',0)
+        self.autovalidate = config.getboolean('config', 'autovalidate')
 
     def create(self):
-        config=ConfigParser.ConfigParser()
+        config=ConfigParser.ConfigParser(self.defaults)
         config.add_section('config')
-        if os.name=='nt':
-            config.set('config','home',os.path.expanduser('~')+'\pp_home')
-            config.set('config','media',os.path.expanduser('~'))
-        else:
-            config.set('config','home',os.path.expanduser('~')+'/pp_home')
-            config.set('config','media',os.path.expanduser('~'))            
-            # config.set('config','home','/home/pi/pp_home')
-            # config.set('config','media','/home/pi')
+        config.set('config', 'home', self.defaults['home'])
+        config.set('config', 'media', self.defaults['media'])
+        config.set('config', 'autovalidate', self.defaults['autovalidate'])
         with open(self.options_file, 'wb') as config_file:
             config.write(config_file)
 
@@ -1106,9 +1108,10 @@ class Options:
 
 class OptionsDialog(ttkSimpleDialog.Dialog):
 
-    def __init__(self, parent, options_file, title=None, ):
+    def __init__(self, parent, options, title=None, ):
         # instantiate the subclass attributes
-        self.options_file=options_file
+        self.options_file=options.options_file
+        self.options = options
 
         # init the super class
         ttkSimpleDialog.Dialog.__init__(self, parent, title)
@@ -1116,7 +1119,7 @@ class OptionsDialog(ttkSimpleDialog.Dialog):
 
     def body(self, master):
         self.result=False
-        config=ConfigParser.ConfigParser()
+        config=ConfigParser.ConfigParser(self.options.defaults)
         config.read(self.options_file)
 
         ttk.Label(master, text="").grid(row=20, sticky=W)
@@ -1130,6 +1133,13 @@ class OptionsDialog(ttkSimpleDialog.Dialog):
         self.e_media = ttk.Entry(master,width=80)
         self.e_media.grid(row=32)
         self.e_media.insert(0,config.get('config','media',0))
+
+        ttk.Label(master, text="").grid(row=40, sticky=W)
+        self.autovalidate = Tkinter.StringVar()
+        self.e_autovalidate = ttk.Checkbutton(master, text="Auto validate", variable = self.autovalidate,
+            onvalue="true", offvalue="false")
+        self.e_autovalidate.grid(row=41, sticky=W)
+        self.autovalidate.set(config.get('config', 'autovalidate'))
 
         return None    # no initial focus
 
@@ -1148,10 +1158,11 @@ class OptionsDialog(ttkSimpleDialog.Dialog):
 
     def save_options(self):
         """ save the output of the options edit dialog to file"""
-        config=ConfigParser.ConfigParser()
+        config=ConfigParser.ConfigParser(self.options.defaults)
         config.add_section('config')
         config.set('config','home',self.e_home.get())
         config.set('config','media',self.e_media.get())
+        config.set('config', 'autovalidate', self.autovalidate.get())
         with open(self.options_file, 'wb') as optionsfile:
             config.write(optionsfile)
     
