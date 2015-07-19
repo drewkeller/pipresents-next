@@ -285,6 +285,7 @@ class PPEditor:
 
 # define status bar
         self.status = StatusBar(root_frame)
+        self.status.set("Click here to validate. Double click to validate and show report.")
         self.status.bind("<Button-1>", self.e_validate_profile)
         self.status.bind("<Double-Button-1>", self.e_validate_profile_with_results)
         self.status.pack(side=BOTTOM, fill=X)
