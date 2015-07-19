@@ -75,7 +75,7 @@ class PPEditor:
         self.root = tk.Tk()
         self.root.title("Editor for Pi Presents")
 
-        style = ttk.Style()
+        style = ttkStyle()
         style.theme_use('clam')
         # self.root.configure(background='grey')
 

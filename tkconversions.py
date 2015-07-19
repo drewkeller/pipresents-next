@@ -3,6 +3,36 @@ from Tkinter import *
 import ttk
 import Tkinter
 import traceback
+import colorsys
+
+class ttkStyle(ttk.Style):
+	def theme_use(self, name, *args, **kwargs):
+		ttk.Style.theme_use(self, *args, **kwargs)
+		# fix weird frame colors
+		#bg = self.lookup('.', 'background') # background, selectbackground
+		#self.map('TFrame', background=[('disabled', bg), ('active', bg)])
+		# differentiate between focused and unfocused Treeview
+		bg = self.lookup('Treeview', 'background', state=['selected'] ) # background, selectbackground
+		halfbg = self.adjust_saturation(bg, .5)
+		self.map('Treeview', 
+			background = [
+			  ('selected','focus', bg),
+			  ('selected','!focus', halfbg)])
+
+	def adjust_saturation(self, color, amount):
+		r,g,b = self.html_to_rgb(color)
+		h,s,v = colorsys.rgb_to_hsv(r,g,b)
+		s *= min(amount, 1.0)
+		r,g,b = colorsys.hsv_to_rgb(h,s,v)
+		return self.rgb_to_html((r,g,b))
+
+	def html_to_rgb(self, html):
+		html = html.replace("#","")
+		r, g, b = html[:2], html[2:4], html[4:]
+		r, g, b = [int(n, 16) for n in (r, g, b)]
+		return r, g, b
+	def rgb_to_html(self, rgb):
+		return "#{0[0]:02x}{0[1]:02x}{0[2]:02x}".format(rgb)
 
 class ttkCombobox(ttk.Combobox):
     def __init__(self, parent, **kwargs):
