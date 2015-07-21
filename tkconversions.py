@@ -1,38 +1,81 @@
 
 from Tkinter import *
 import ttk
-import Tkinter
+import Tkinter as tk
 import traceback
 import colorsys
 
 class ttkStyle(ttk.Style):
 	def theme_use(self, name, *args, **kwargs):
 		ttk.Style.theme_use(self, *args, **kwargs)
-		# fix weird frame colors
-		#bg = self.lookup('.', 'background') # background, selectbackground
-		#self.map('TFrame', background=[('disabled', bg), ('active', bg)])
 		# differentiate between focused and unfocused Treeview
 		bg = self.lookup('Treeview', 'background', state=['selected'] ) # background, selectbackground
 		halfbg = self.adjust_saturation(bg, .5)
 		self.map('Treeview', 
 			background = [
-			  ('selected','focus', bg),
-			  ('selected','!focus', halfbg)])
+			('selected','focus', bg),
+			('selected','!focus', halfbg)])
+
+	def set_tk_palette(self, widget, widget_class='.'):
+		''' Set the default colors of the given tk widget to match our style '''
+		bg  = self.lookup(widget_class, 'background')
+		abg = self.lookup(widget_class, 'background', state=['active'])
+		dbg = self.lookup(widget_class, 'background', state=['disabled'])
+		fbg = self.lookup(widget_class, 'background', state=['focus'])
+		sbg = self.lookup(widget_class, 'background', state=['selected'])
+		fg  = self.lookup(widget_class, 'foreground')
+		afg = self.lookup(widget_class, 'foreground', state=['active'])
+		dfg = self.lookup(widget_class, 'foreground', state=['disabled'])
+		ffg = self.lookup(widget_class, 'foreground', state=['focus'])
+		sfg = self.lookup(widget_class, 'foreground', state=['selected'])
+		print "background: {0}, active {1}, disabled {2}, focus {3}, selected {4}".format(bg, abg, dbg, fbg, sbg)
+		print "foreground: {0}, active {1}, disabled {2}, focus {3}, selected {4}".format(fg, afg, dfg, ffg, sfg)
+		widget.tk_setPalette(
+			background         = bg,
+			foreground         = fg,
+			activebackground   = abg,
+			activeforeground   = afg,
+			disabledbackground = dbg,
+			disabledforeground = dfg,
+			highlightbackground= fbg,
+			highlightcolor     = ffg,
+			selectedbackground = sbg,
+			selectedforeground = sfg
+			)
 
 	def adjust_saturation(self, color, amount):
 		r,g,b = self.html_to_rgb(color)
 		h,s,v = colorsys.rgb_to_hsv(r,g,b)
 		s *= min(amount, 1.0)
 		r,g,b = colorsys.hsv_to_rgb(h,s,v)
-		return self.rgb_to_html((r,g,b))
+		return self.rgb_to_html(r,g,b)
 
 	def html_to_rgb(self, html):
 		html = html.replace("#","")
 		r, g, b = html[:2], html[2:4], html[4:]
 		r, g, b = [int(n, 16) for n in (r, g, b)]
 		return r, g, b
-	def rgb_to_html(self, rgb):
-		return "#{0[0]:02x}{0[1]:02x}{0[2]:02x}".format(rgb)
+
+	def rgb_to_html(self, r,g,b):
+		return "#{0:02x}{1:02x}{2:02x}".format(r,g,b)
+
+class ttkMenu(tk.Menu):
+    def __init__(self, parent, *args, **kwargs):
+      kwargs.pop('tearoff', 0)
+      tk.Menu.__init__(self, parent, *args, tearoff=0, **kwargs)
+
+    def add_submenu(self, label, underline, **kwargs):
+        parent = self
+        accelerator = kwargs.pop('accelerator', None)
+        if not accelerator: accelerator = label[underline].lower()
+        menu = ttkMenu(parent)
+        parent.add_cascade(menu=menu, label=label, underline=underline, accelerator=accelerator)
+        return menu
+
+    def add_command(self, label, underline, command):
+        parent = self
+        #char = label[underline].lower()
+        tk.Menu.add_command(self, label=label, underline=underline, command=command) #, accelerator=char)
 
 class ttkCombobox(ttk.Combobox):
     def __init__(self, parent, **kwargs):
