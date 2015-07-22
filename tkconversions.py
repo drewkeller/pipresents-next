@@ -53,11 +53,11 @@ class ttkStyle(ttk.Style):
     def html_to_rgb(self, html):
         html = html.replace("#","")
         r, g, b = html[:2], html[2:4], html[4:]
-        r, g, b = [int(n, 16) for n in (r, g, b)]
+        r, g, b = [(int(n, 16))/255.0 for n in (r, g, b)]
         return r, g, b
 
     def rgb_to_html(self, r,g,b):
-        return "#{0:02x}{1:02x}{2:02x}".format(r,g,b)
+        return "#{0:02x}{1:02x}{2:02x}".format(int(r*255),int(g*255),int(b*255))
 
 class ttkMenu(tk.Menu):
     def __init__(self, parent, *args, **kwargs):
