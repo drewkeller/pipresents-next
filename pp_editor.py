@@ -409,7 +409,10 @@ class PPEditor:
             return
         self.open_medialists(self.pp_profile_dir)
         self.refresh_tracks_display()
-        #self.validate_profile()
+        # select the first item in the shows list and focus the keyboard to the list
+        item = self.shows_display.select(0)
+        self.highlight_shows_display()
+        self.shows_display.focus_set()
 
 
     def new_profile(self,profile):
