@@ -252,7 +252,7 @@ class PPEditor:
         self.shows_display.bind("<Double-Button-1>", self.m_edit_show)
         self.shows_display.bind("<space>", self.m_edit_show)
         self.shows_display.bind("<Delete>", self.e_remove_show_and_medialist)
-        self.tracks_display.bind("+", lambda e: showsmenu_add.tk_popup(e.x_root, e.y_root))
+        self.shows_display.bind("+", lambda e: showsmenu_add.tk_popup(e.x_root, e.y_root))
 
     
 # define display of medialists
@@ -265,7 +265,7 @@ class PPEditor:
         self.medialists_display.pack(side=LEFT,  fill=BOTH, expand=1)
         self.medialists_display.bind("<<TreeviewSelect>>", self.e_select_medialist)
         self.medialists_display.bind("<Delete>", self.e_remove_medialist)
-        self.medialist_display.bind("+", lambda e: medialist_add.tk_popup(e.x_root, e.y_root))
+        self.medialists_display.bind("+", lambda e: medialist_add.tk_popup(e.x_root, e.y_root))
 
 
 # define display of tracks
@@ -315,13 +315,37 @@ class PPEditor:
         # possibly with somewhat annoying prompt here... or not.
         self.app_exit()
 
+    def set_window_geometry(self):
+        try:
+            option = self.options.geometry.replace('x', ',').replace('+', ',')
+            w,h,x,y = tuple(int(x) for x in option[:].split(','))
+            ws = self.root.winfo_screenwidth()
+            hs = self.root.winfo_screenheight()
+            w = min(ws, w)
+            h = min(hs, h)
+            # if the location goes off screen, center the window
+            if x + w > ws: x = (ws-w)/2
+            if y + w > hs: y = (hs-h)/2
+            self.root.geometry("{0}x{1}+{2}+{3}".format(w, h, x, y))
+        except:
+            pass
+
+    def save_window_geometry(self):
+        self.options.geometry = self.root.geometry()
+        self.options.save()
+        pass
+
     def app_exit(self):
+        self.save_window_geometry()
         self.root.destroy()
         exit()
 
 
     def init(self):
         self.options.read()
+
+        self.set_window_geometry()
+
         # get home path from -o option (kept separate from self.options.pp_home_dir)
         # or fall back to self.options.pp_home_dir
         if self.command_options['home'] != '':
@@ -1130,30 +1154,48 @@ class Options:
         self.defaults = {
             'home': user_home_dir+os.sep+'pp_home',
             'media': user_home_dir,
-            'autovalidate': 'false'
+            'autovalidate': 'false',
+            'geometry': 'none'
             }
+        self.autovalidate = self.defaults['autovalidate']
+        self.geometry = self.defaults['geometry']
     # create an options file if necessary
         self.options_file = app_dir+os.sep+'pp_editor.cfg'
+        self.config=ConfigParser.ConfigParser(self.defaults)
         if not os.path.exists(self.options_file):
             self.create()
     
     def read(self):
         """reads options from options file to interface"""
-        config=ConfigParser.ConfigParser(self.defaults)
+        config = self.config
         config.read(self.options_file)
-        self.pp_home_dir =config.get('config','home',0)
-        self.initial_media_dir =config.get('config','media',0)
-        self.autovalidate = config.getboolean('config', 'autovalidate')
+        if config.has_section('config'):
+            self.pp_home_dir       = config.get(       'config', 'home', 0)
+            self.initial_media_dir = config.get(       'config', 'media', 0)
+            self.autovalidate      = config.getboolean('config', 'autovalidate')
+            self.geometry          = config.get(       'config', 'geometry')
+        else:
+            self.create()
 
     def create(self):
-        config=ConfigParser.ConfigParser(self.defaults)
+        config=self.config
         config.add_section('config')
-        config.set('config', 'home', self.defaults['home'])
-        config.set('config', 'media', self.defaults['media'])
+        config.set('config', 'home',         self.defaults['home'])
+        config.set('config', 'media',        self.defaults['media'])
         config.set('config', 'autovalidate', self.defaults['autovalidate'])
+        config.set('config', 'geometry',     self.defaults['geometry'])
         with open(self.options_file, 'wb') as config_file:
             config.write(config_file)
 
+    def save(self):
+        """ save the output of the options edit dialog to file"""
+        config=self.config
+        config.set('config', 'home',         self.pp_home_dir)
+        config.set('config', 'media',        self.initial_media_dir)
+        config.set('config', 'autovalidate', self.autovalidate)
+        config.set('config', 'geometry',     self.geometry)
+        with open(self.options_file, 'wb') as optionsfile:
+            config.write(optionsfile)
 
 
 # *************************************
@@ -1209,19 +1251,12 @@ class OptionsDialog(ttkSimpleDialog.Dialog):
         return 1
 
     def apply(self):
-        self.save_options()
+        self.options.pp_home_dir = self.e_home.get()
+        self.options.initial_media_dir = self.e_media.get()
+        self.options.autovalidate = self.autovalidate.get()
+        self.options.save()
         self.result=True
 
-    def save_options(self):
-        """ save the output of the options edit dialog to file"""
-        config=ConfigParser.ConfigParser(self.options.defaults)
-        config.add_section('config')
-        config.set('config','home',self.e_home.get())
-        config.set('config','media',self.e_media.get())
-        config.set('config', 'autovalidate', self.autovalidate.get())
-        with open(self.options_file, 'wb') as optionsfile:
-            config.write(optionsfile)
-    
 
 # ***************************************
 # MAIN
