@@ -23,6 +23,7 @@ class MediaList:
         self.mon=Monitor()
         self.mon.on()
         self.sequence = sequence
+        self.filename = None
 
  # Functions for the editor dealing with complete list
 
@@ -269,6 +270,7 @@ class MediaList:
         else:
             self.issue="1.0"
         if self.issue==showlist_issue:
+            self.filename = os.path.basename(filename)
             self._num_tracks=len(self._tracks)
             self._selected_track_index=-1
             return True
@@ -293,6 +295,7 @@ class MediaList:
                 json.dump(dic,ofile,sort_keys=True,indent=1)
                 ofile.close()
                 self.mon.log(self,"Saved medialist "+ filename)
+                self.filename = os.path.basename(filename)
                 break
             except IOError:
                 self.mon.err(self,"failed to save medialist, trying again " + str(tries))
