@@ -257,11 +257,20 @@ class PPEditor:
     
 # define display of medialists
         scrollbar = ttk.Scrollbar(medialists_frame, orient=tk.VERTICAL)
+        # horizontal bar doesn't work
+        #scrollbarh = ttk.Scrollbar(medialists_frame, orient=tk.HORIZONTAL)
         self.medialists_display = ttkListbox(medialists_frame, selectmode=SINGLE, height=7,
                                     width = 40, yscrollcommand=scrollbar.set,
-                                    on_item_popup=medialistmenu, off_item_popup=medialistmenu_add)
+                                    on_item_popup=medialistmenu, off_item_popup=medialistmenu_add,
+                                    columns=('show'))
         scrollbar.config(command=self.medialists_display.yview)
+        #scrollbarh.config(command=self.medialists_display.xview)
         scrollbar.pack(side=RIGHT, fill=Y)
+        #scrollbarh.pack(side=BOTTOM, fill=X)
+        self.medialists_display.column('#0')
+        self.medialists_display.heading('#0', text="Filename")
+        self.medialists_display.column('show', width=75, stretch=False)
+        self.medialists_display.heading('show', text="Show")
         self.medialists_display.pack(side=LEFT,  fill=BOTH, expand=1)
         self.medialists_display.bind("<<TreeviewSelect>>", self.e_select_medialist)
         self.medialists_display.bind("<Delete>", self.e_remove_medialist)
@@ -344,8 +353,6 @@ class PPEditor:
     def init(self):
         self.options.read()
 
-        self.set_window_geometry()
-
         # get home path from -o option (kept separate from self.options.pp_home_dir)
         # or fall back to self.options.pp_home_dir
         if self.command_options['home'] != '':
@@ -377,7 +384,7 @@ class PPEditor:
         # if we were given a profile on the command line, open it
         if self.command_options['profile'] != '':
             self.open_profile(self.pp_profile_dir)
-
+        self.set_window_geometry()
 
 
 # ***************************************
@@ -697,7 +704,8 @@ class PPEditor:
                 self.medialists = self.medialists + [file]
         self.medialists_display.delete(0,self.medialists_display.size())
         for item in self.medialists:
-            self.medialists_display.insert(END, item, iid=item)
+            showname = self.get_showname_for_medialist(item)
+            self.medialists_display.insert(END, item, iid=item, values=(showname))
         self.current_medialists_index=-1
         self.current_medialist=None
 
@@ -741,7 +749,8 @@ class PPEditor:
         # append it to the list
         self.medialists.append(copy.deepcopy(name))
         # add title to medialists display
-        item = self.medialists_display.insert(END, name, iid=name)  
+        showname = self.get_showname_for_medialist(item)
+        self.medialists_display.insert(END, item, iid=item, values=(showname))
         # and set it as the selected medialist
         self.medialists_display.select(name)
         #self.refresh_medialists_display()
@@ -786,10 +795,21 @@ class PPEditor:
                 self.refresh_tracks_display()
                 #self.refresh_medialists_display()
 
+    def get_showname_for_medialist(self, medialist):
+        showname = ''
+        if self.current_showlist is not None and self.current_showlist.length() > 0:
+            for show in self.current_showlist.shows():
+                if 'medialist' in show:
+                    filename = show['medialist']
+                    if filename == medialist:
+                        showname = show['show-ref']
+        return showname
+
     def refresh_medialists_display(self):
         self.medialists_display.delete(0,END)
         for item in self.medialists:
-            self.medialists_display.insert(END, item, iid=item)
+            showname = self.get_showname_for_medialist(item)
+            self.medialists_display.insert(END, item, iid=item, values=(showname))
         self.highlight_medialist_display()
 
     def highlight_medialist_display(self):
@@ -1023,6 +1043,7 @@ class PPEditor:
             if not os.path.exists(self.pp_profile_dir+os.sep+"pp_showlist.json"):
                 tkMessageBox.showwarning("Pi Presents","Not a profile, skipping "+self.pp_profile_dir)
             else:
+                print "Openging showlist"
                 self.current_showlist=ShowList()
                 #self.mon.log (self,"Checking version "+profile_file)
                 self.current_showlist.open_json(self.pp_profile_dir+os.sep+"pp_showlist.json")
