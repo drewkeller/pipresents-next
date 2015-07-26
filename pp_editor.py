@@ -193,6 +193,7 @@ class PPEditor:
         notebook.add(shows_tab, text="Shows")
         notebook.add(medialist_tab, text="Medialists")
         notebook.pack(side=LEFT, fill=BOTH, expand=True)
+        self.notebook = notebook
         
         #middle_frame=ttkFrame(bottom_frame,padx=5)
         #middle_frame.pack(side=LEFT, fill=BOTH, expand=False)
@@ -310,6 +311,7 @@ class PPEditor:
         self.options=Options(self.pp_dir) #creates options file in code directory if necessary
         
         self.root.bind("<Escape>", self.escape_keypressed)
+        self.root.bind("<Control-t>", self.switch_tabs)
 
 # initialise variables      
         self.init()
@@ -431,6 +433,16 @@ class PPEditor:
             #self.status.set("! {0} errors, {1} warnings. Run validation for details.", errors, warnings, background='red')
         else:
             self.status.set_info("{0}, {1}.", error_text, warn_text)
+
+    def switch_tabs(self, event=None):
+        seleccted_tab = self.notebook.select()
+        index = self.notebook.tabs().index(seleccted_tab)
+        if index == 0: 
+            self.notebook.select(1)
+            self.medialists_display.focus_set()
+        else: 
+            self.notebook.select(0)
+            self.shows_display.focus_set()
 
     
 # **************
