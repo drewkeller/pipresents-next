@@ -143,6 +143,19 @@ class ttkListbox(ttk.Treeview):
         ttk.Treeview.__init__(self, parent, **kwargs)
         if self.on_item_popup or self.off_item_popup:
             self.bind("<ButtonPress-3><ButtonRelease-3>", self.show_popup)
+        self.bind("<Up>", self.up_keypressed)
+        self.bind("<Down>", self.down_keypressed)
+
+    def up_keypressed(self, event=None):
+        if len(self.selection()) == 0:
+            children = self.get_children()
+            if len(children) > 0:
+                self.select(len(children)-1)
+
+    def down_keypressed(self, event=None):
+        if len(self.selection()) == 0:
+            if len(self.get_children()) > 0:
+                self.select(self.item_at(0))
 
     def show_popup(self, event=None, menu=None):
         if not event: return
@@ -244,7 +257,6 @@ class ttkListbox(ttk.Treeview):
     def clear(self):
         self.delete(0, END)
 
-
 class ttkButton(ttk.Button):
 
     def __init__(self, parent, **kwargs):
@@ -263,4 +275,3 @@ class ttkFrame(ttk.Frame):
       kwargs.pop('padx', None)
       kwargs.pop('pady', None)
       ttk.Frame.__init__(self, parent, **kwargs)
-  
